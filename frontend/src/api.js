@@ -1,10 +1,20 @@
-// Static demo mode - all data is embedded, no server needed.
+// Static demo mode - generates realistic data per day using date-seeded randomization.
 
-function today(hour, minute = 0) {
-  const d = new Date()
+function atTime(date, hour, minute = 0) {
+  const d = new Date(date)
   d.setHours(hour, minute, 0, 0)
   return d.toISOString()
 }
+
+// Simple seeded random from a date string
+function seededRand(dateStr) {
+  let h = 0
+  for (let i = 0; i < dateStr.length; i++) h = ((h << 5) - h + dateStr.charCodeAt(i)) | 0
+  return () => { h = (h * 16807 + 0) % 2147483647; return (h & 0x7fffffff) / 0x7fffffff }
+}
+
+function pick(rand, arr) { return arr[Math.floor(rand() * arr.length)] }
+function between(rand, min, max) { return min + Math.floor(rand() * (max - min + 1)) }
 
 // ── Clients ───────────────────────────────────────────────────
 const CLIENTS = [
@@ -16,106 +26,229 @@ const CLIENTS = [
 ]
 
 function cl(id) { return CLIENTS.find(c => c.id === id) || null }
-function link(id, cid) { return [{ id, activity_id: id, client_id: cid, confidence: 0.95, matched_by: 'AI', client: cl(cid) }] }
+function lnk(id, cid) { return [{ id, activity_id: id, client_id: cid, confidence: 0.95, matched_by: 'AI', client: cl(cid) }] }
 
-// ── Activities (NO overlaps - strict sequential timeline) ─────
-// Each activity occupies a unique time slot across ALL columns.
-const ACTIVITIES = [
-  // 8:30–8:45  CALL  Morgan
-  { id: 1, app_name: 'Phone', window_title: 'Sarah Chen (Morgan Ltd. - General Counsel)', start_time: today(8,30), end_time: today(8,45), duration_seconds: 900, activity_type: 'call', metadata: {}, client_links: link(1,1) },
-  // 8:45–9:00  CALENDAR  (internal)
-  { id: 2, app_name: 'Calendar', window_title: 'Team Standup - Litigation Group', start_time: today(8,45), end_time: today(9,0), duration_seconds: 900, activity_type: 'calendar', metadata: {}, client_links: [] },
-  // 9:00–9:45  COMPUTER  Morgan
-  { id: 3, app_name: 'Microsoft Word', window_title: 'Morgan_Ltd_Service_Agreement_v4_REDLINE.docx', start_time: today(9,0), end_time: today(9,45), duration_seconds: 2700, activity_type: 'document', metadata: {}, client_links: link(3,1) },
-  // 9:45–10:00  COMPUTER  Morgan
-  { id: 4, app_name: 'Adobe Acrobat', window_title: 'Morgan_Ltd_Board_Resolution_2026.pdf', start_time: today(9,45), end_time: today(10,0), duration_seconds: 900, activity_type: 'document', metadata: {}, client_links: link(4,1) },
-  // 10:00–10:15  EMAIL  Morgan
-  { id: 5, app_name: 'Microsoft Outlook', window_title: 'Re: Morgan Ltd - Service Agreement Amendment (Sarah Chen)', start_time: today(10,0), end_time: today(10,15), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(5,1) },
-  // 10:15–10:45  CALL  Harper
-  { id: 6, app_name: 'FaceTime', window_title: 'James Harper - (917) 555-0142', start_time: today(10,15), end_time: today(10,45), duration_seconds: 1800, activity_type: 'call', metadata: {}, client_links: link(6,3) },
-  // 10:45–11:00  EMAIL  Axion
-  { id: 7, app_name: 'Microsoft Outlook', window_title: 'Re: Introduction - Axion Ltd. IP Matters', start_time: today(10,45), end_time: today(11,0), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(7,2) },
-  // 11:00–11:30  CALENDAR  Morgan
-  { id: 8, app_name: 'Calendar', window_title: 'Morgan Ltd. - Contract Negotiation Call', start_time: today(11,0), end_time: today(11,30), duration_seconds: 1800, activity_type: 'calendar', metadata: {}, client_links: link(8,1) },
-  // 11:30–12:00  COMPUTER  AcmeCorp
-  { id: 9, app_name: 'Microsoft Excel', window_title: 'AcmeCorp_Q1_Billing_Reconciliation.xlsx', start_time: today(11,30), end_time: today(12,0), duration_seconds: 1800, activity_type: 'document', metadata: {}, client_links: link(9,4) },
-  // 12:00–12:45  COMPUTER  Axion
-  { id: 10, app_name: 'Microsoft Word', window_title: 'Axion_IP_Claim_Response_FINAL.docx', start_time: today(12,0), end_time: today(12,45), duration_seconds: 2700, activity_type: 'document', metadata: {}, client_links: link(10,2) },
-  // 12:45–1:00  EMAIL  Axion
-  { id: 11, app_name: 'Microsoft Outlook', window_title: 'Axion Ltd. - Patent Filing Deadline Reminder (Mar 31)', start_time: today(12,45), end_time: today(13,0), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(11,2) },
-  // 1:00–1:30  COMPUTER  Axion
-  { id: 12, app_name: 'Google Chrome', window_title: 'Westlaw - Patent Infringement Case Law 2025-2026', start_time: today(13,0), end_time: today(13,30), duration_seconds: 1800, activity_type: 'browser', metadata: {}, client_links: link(12,2) },
-  // 1:30–2:15  CALENDAR  (internal)
-  { id: 13, app_name: 'Calendar', window_title: 'Lunch - Partner Review (Private)', start_time: today(13,30), end_time: today(14,15), duration_seconds: 2700, activity_type: 'calendar', metadata: {}, client_links: [] },
-  // 2:15–2:30  CALL  Daven
-  { id: 14, app_name: 'Phone', window_title: 'John Daven - (212) 555-0198', start_time: today(14,15), end_time: today(14,30), duration_seconds: 900, activity_type: 'call', metadata: {}, client_links: link(14,5) },
-  // 2:30–2:45  CALL  Daven
-  { id: 15, app_name: 'Phone', window_title: 'Opposing Counsel - Richards & Webb LLP', start_time: today(14,30), end_time: today(14,45), duration_seconds: 900, activity_type: 'call', metadata: {}, client_links: link(15,5) },
-  // 2:45–3:15  COMPUTER  Daven
-  { id: 16, app_name: 'Microsoft PowerPoint', window_title: 'Daven_Vendor_Performance_Brief_Q1.pptx', start_time: today(14,45), end_time: today(15,15), duration_seconds: 1800, activity_type: 'document', metadata: {}, client_links: link(16,5) },
-  // 3:15–3:30  EMAIL  Harper
-  { id: 17, app_name: 'Microsoft Outlook', window_title: 'Re: Harper Employment Agreement - Final Comments from James', start_time: today(15,15), end_time: today(15,30), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(17,3) },
-  // 3:30–4:15  COMPUTER  Harper
-  { id: 18, app_name: 'Microsoft Word', window_title: 'Harper_Exec_Employment_Agreement_v3_TRACKED.docx', start_time: today(15,30), end_time: today(16,15), duration_seconds: 2700, activity_type: 'document', metadata: {}, client_links: link(18,3) },
-  // 4:15–4:30  EMAIL  AcmeCorp
-  { id: 19, app_name: 'Microsoft Outlook', window_title: 'AcmeCorp - Q1 Invoice #2026-0341 Attached', start_time: today(16,15), end_time: today(16,30), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(19,4) },
-  // 4:30–4:45  COMPUTER  AcmeCorp
-  { id: 20, app_name: 'Adobe Acrobat', window_title: 'AcmeCorp_Regulatory_Compliance_Checklist.pdf', start_time: today(16,30), end_time: today(16,45), duration_seconds: 900, activity_type: 'document', metadata: {}, client_links: link(20,4) },
-  // 4:45–5:00  COMPUTER  AcmeCorp
-  { id: 21, app_name: 'Google Chrome', window_title: 'SEC.gov - Recent Enforcement Actions & Compliance Updates', start_time: today(16,45), end_time: today(17,0), duration_seconds: 900, activity_type: 'browser', metadata: {}, client_links: link(21,4) },
-  // 5:00–5:30  CALL  AcmeCorp
-  { id: 22, app_name: 'Zoom', window_title: 'AcmeCorp - Compliance Review Call', start_time: today(17,0), end_time: today(17,30), duration_seconds: 1800, activity_type: 'call', metadata: {}, client_links: link(22,4) },
-  // 5:30–5:45  EMAIL  AcmeCorp
-  { id: 23, app_name: 'Microsoft Outlook', window_title: 'Meeting Notes: AcmeCorp Compliance Audit Prep', start_time: today(17,30), end_time: today(17,45), duration_seconds: 900, activity_type: 'email', metadata: {}, client_links: link(23,4) },
-  // 5:45–6:15  COMPUTER  Daven
-  { id: 24, app_name: 'Microsoft Word', window_title: 'Daven_Litigation_Memo_re_Discovery_Responses.docx', start_time: today(17,45), end_time: today(18,15), duration_seconds: 1800, activity_type: 'document', metadata: {}, client_links: link(24,5) },
-  // 6:15–6:25  CALL  Daven
-  { id: 25, app_name: 'Phone', window_title: 'Court Clerk - NY Supreme Court (Filing Confirmation)', start_time: today(18,15), end_time: today(18,25), duration_seconds: 600, activity_type: 'call', metadata: {}, client_links: link(25,5) },
-  // 6:25–6:35  EMAIL  Daven
-  { id: 26, app_name: 'Microsoft Outlook', window_title: 'Daven Ltd. - Discovery Responses Due April 7', start_time: today(18,25), end_time: today(18,35), duration_seconds: 600, activity_type: 'email', metadata: {}, client_links: link(26,5) },
+// ── Activity templates (shuffled per day) ─────────────────────
+const COMPUTER_TEMPLATES = [
+  { app: 'Microsoft Word', title: 'Morgan_Ltd_Service_Agreement_v4_REDLINE.docx', dur: 45, cid: 1 },
+  { app: 'Adobe Acrobat', title: 'Morgan_Ltd_Board_Resolution_2026.pdf', dur: 15, cid: 1 },
+  { app: 'Microsoft Word', title: 'Morgan_Subsidiary_Merger_Analysis.docx', dur: 30, cid: 1 },
+  { app: 'Microsoft Excel', title: 'AcmeCorp_Q1_Billing_Reconciliation.xlsx', dur: 30, cid: 4 },
+  { app: 'Microsoft Word', title: 'Axion_IP_Claim_Response_FINAL.docx', dur: 45, cid: 2 },
+  { app: 'Google Chrome', title: 'Westlaw - Patent Infringement Case Law 2025-2026', dur: 30, cid: 2 },
+  { app: 'Microsoft PowerPoint', title: 'Daven_Vendor_Performance_Brief_Q1.pptx', dur: 30, cid: 5 },
+  { app: 'Microsoft Word', title: 'Harper_Exec_Employment_Agreement_v3_TRACKED.docx', dur: 45, cid: 3 },
+  { app: 'Adobe Acrobat', title: 'AcmeCorp_Regulatory_Compliance_Checklist.pdf', dur: 15, cid: 4 },
+  { app: 'Google Chrome', title: 'SEC.gov - Recent Enforcement Actions & Compliance', dur: 15, cid: 4 },
+  { app: 'Microsoft Word', title: 'Daven_Litigation_Memo_re_Discovery_Responses.docx', dur: 30, cid: 5 },
+  { app: 'Microsoft Word', title: 'Harper_Real_Estate_Due_Diligence_Report.docx', dur: 30, cid: 3 },
+  { app: 'Adobe Acrobat', title: 'Axion_Software_License_Agreement_Draft.pdf', dur: 20, cid: 2 },
+  { app: 'Microsoft Excel', title: 'Morgan_Ltd_Fee_Estimate_2026.xlsx', dur: 20, cid: 1 },
+  { app: 'Google Chrome', title: 'LexisNexis - Employment Law Precedents', dur: 25, cid: 3 },
 ]
 
-// ── AI Time Entries (non-overlapping blocks, accurately totaled) ──
-// Morgan block 1:  call 15m + doc 45m + doc 15m + email 15m = 1h 30m
-// Morgan block 2:  calendar call 30m
-// Harper block 1:  FaceTime 30m
-// Axion:           email 15m + doc 45m + email 15m + research 30m = 1h 48m (rounded)
-// AcmeCorp block 1: Excel 30m
-// Daven block 1:   call 15m + call 15m + PPT 30m = 1h
-// Harper block 2:  email 15m + doc 45m = 1h
-// AcmeCorp block 2: email 15m + PDF 15m + Chrome 15m + Zoom 30m + email 15m = 1h 30m
-// Daven block 2:   doc 30m + call 10m + email 10m = 48m (rounded)
-// TOTAL: 1h30 + 30 + 30 + 1h48 + 30 + 1h + 1h + 1h30 + 48 = 9h 6m
-const TIME_ENTRIES = [
-  { id: 1, client_id: 1, matter_id: 1, description: 'Call with GC Sarah Chen; redlined service agreement v4; reviewed board resolution; email correspondence re: amendment terms', start_time: today(8,30), end_time: today(10,0), duration_seconds: 5400, source: 'ai_suggested', status: 'confirmed', client: cl(1) },
-  { id: 2, client_id: 3, matter_id: 5, description: 'FaceTime meeting with James Harper re: executive employment terms; discussed non-compete and severance provisions', start_time: today(10,15), end_time: today(10,45), duration_seconds: 1800, source: 'ai_suggested', status: 'confirmed', client: cl(3) },
-  { id: 3, client_id: 2, matter_id: 3, description: 'Email correspondence re: IP matters; drafted patent infringement claim response; filing deadline review; Westlaw case law research', start_time: today(10,45), end_time: today(12,33), duration_seconds: 6480, source: 'ai_suggested', status: 'draft', client: cl(2) },
-  { id: 4, client_id: 1, matter_id: 2, description: 'Contract negotiation conference call; discussed subsidiary merger timeline and regulatory approvals', start_time: today(11,0), end_time: today(11,30), duration_seconds: 1800, source: 'ai_suggested', status: 'confirmed', client: cl(1) },
-  { id: 5, client_id: 4, matter_id: 7, description: 'Q1 billing reconciliation spreadsheet review and invoice preparation', start_time: today(11,30), end_time: today(12,0), duration_seconds: 1800, source: 'ai_suggested', status: 'confirmed', client: cl(4) },
-  { id: 6, client_id: 5, matter_id: 9, description: 'Calls with John Daven and opposing counsel Richards & Webb re: vendor performance; prepared performance brief presentation', start_time: today(14,15), end_time: today(15,15), duration_seconds: 3600, source: 'ai_suggested', status: 'draft', client: cl(5) },
-  { id: 7, client_id: 3, matter_id: 5, description: 'Reviewed final comments from James Harper; revised executive employment agreement v3 with tracked changes', start_time: today(15,15), end_time: today(16,15), duration_seconds: 3600, source: 'ai_suggested', status: 'confirmed', client: cl(3) },
-  { id: 8, client_id: 4, matter_id: 8, description: 'Reviewed compliance checklist and SEC enforcement updates; Zoom compliance review call; invoice and meeting notes', start_time: today(16,15), end_time: today(17,45), duration_seconds: 5400, source: 'ai_suggested', status: 'confirmed', client: cl(4) },
-  { id: 9, client_id: 5, matter_id: 10, description: 'Drafted litigation memo re: discovery responses; court clerk filing confirmation call; discovery deadline correspondence', start_time: today(17,45), end_time: today(18,33), duration_seconds: 2880, source: 'ai_suggested', status: 'draft', client: cl(5) },
+const CALENDAR_TEMPLATES = [
+  { title: 'Team Standup - Litigation Group', dur: 15, cid: 0 },
+  { title: 'Morgan Ltd. - Contract Negotiation Call', dur: 30, cid: 1 },
+  { title: 'Lunch - Partner Review (Private)', dur: 45, cid: 0 },
+  { title: 'AcmeCorp - Compliance Review & Audit Prep', dur: 30, cid: 4 },
+  { title: 'Harper & Associates - Employment Terms Follow-up', dur: 30, cid: 3 },
+  { title: 'Internal - Pro Bono Case Review', dur: 20, cid: 0 },
+  { title: 'Daven Ltd. - Litigation Strategy Meeting', dur: 30, cid: 5 },
+  { title: 'Axion Ltd. - Patent Portfolio Review', dur: 30, cid: 2 },
 ]
+
+const CALL_TEMPLATES = [
+  { app: 'Phone', title: 'Sarah Chen (Morgan Ltd. - General Counsel)', dur: 15, cid: 1 },
+  { app: 'FaceTime', title: 'James Harper - (917) 555-0142', dur: 30, cid: 3 },
+  { app: 'Phone', title: 'John Daven - (212) 555-0198', dur: 15, cid: 5 },
+  { app: 'Phone', title: 'Opposing Counsel - Richards & Webb LLP', dur: 15, cid: 5 },
+  { app: 'Zoom', title: 'AcmeCorp - Compliance Review Call', dur: 30, cid: 4 },
+  { app: 'Phone', title: 'Court Clerk - NY Supreme Court (Filing Confirmation)', dur: 10, cid: 5 },
+  { app: 'Phone', title: 'Robert Kim (Axion Ltd. - VP Legal)', dur: 20, cid: 2 },
+  { app: 'FaceTime', title: 'Morgan Ltd. - Board Secretary', dur: 15, cid: 1 },
+]
+
+const EMAIL_TEMPLATES = [
+  { title: 'Re: Morgan Ltd - Service Agreement Amendment (Sarah Chen)', dur: 15, cid: 1 },
+  { title: 'Re: Introduction - Axion Ltd. IP Matters', dur: 15, cid: 2 },
+  { title: 'Axion Ltd. - Patent Filing Deadline Reminder (Mar 31)', dur: 15, cid: 2 },
+  { title: 'Re: Harper Employment Agreement - Final Comments from James', dur: 15, cid: 3 },
+  { title: 'AcmeCorp - Q1 Invoice #2026-0341 Attached', dur: 15, cid: 4 },
+  { title: 'Meeting Notes: AcmeCorp Compliance Audit Prep', dur: 15, cid: 4 },
+  { title: 'Daven Ltd. - Discovery Responses Due April 7', dur: 10, cid: 5 },
+  { title: 'FW: Board Resolution - Morgan Ltd. Restructuring', dur: 15, cid: 1 },
+  { title: 'Re: Daven Vendor Performance - Action Items', dur: 10, cid: 5 },
+  { title: 'Harper & Associates - Office Lease Review', dur: 15, cid: 3 },
+]
+
+const ENTRY_DESCRIPTIONS = {
+  1: ['Call with GC Sarah Chen; redlined service agreement v4; reviewed board resolution', 'Contract negotiation; discussed subsidiary merger timeline and regulatory approvals', 'Reviewed fee estimate and engagement letter; email correspondence re: restructuring'],
+  2: ['Email re: IP matters; drafted patent infringement claim response; Westlaw research', 'Reviewed software license agreement; patent portfolio assessment with VP Legal', 'Case law research on Westlaw; filing deadline preparation'],
+  3: ['FaceTime meeting re: executive employment terms; non-compete provisions review', 'Reviewed final comments; revised employment agreement v3 with tracked changes', 'Employment law research on LexisNexis; due diligence report preparation'],
+  4: ['Q1 billing reconciliation; invoice preparation', 'Reviewed compliance checklist and SEC updates; Zoom review call; meeting notes', 'Regulatory audit prep; compliance documentation review'],
+  5: ['Calls with John Daven and opposing counsel; prepared performance brief', 'Drafted litigation memo; court filing confirmation; discovery correspondence', 'Litigation strategy discussion; vendor performance assessment'],
+}
+
+// ── Generate day data ─────────────────────────────────────────
+function generateDayData(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00')
+  const dow = date.getDay()
+
+  // Weekends: empty
+  if (dow === 0 || dow === 6) return { activities: [], entries: [] }
+
+  const rand = seededRand(dateStr)
+  const activities = []
+  const entries = []
+  let id = 1
+  let cursor = 8 * 60 + 30 // start at 8:30 AM in minutes
+
+  // Pick 7-10 computer activities
+  const numComputer = between(rand, 7, 10)
+  const computers = []
+  const used = new Set()
+  while (computers.length < numComputer) {
+    const t = pick(rand, COMPUTER_TEMPLATES)
+    if (!used.has(t.title)) { computers.push({ ...t }); used.add(t.title) }
+  }
+
+  // Pick 2-4 calendar, 4-6 calls, 5-7 emails
+  const numCal = between(rand, 2, 4)
+  const numCall = between(rand, 4, 6)
+  const numEmail = between(rand, 5, 7)
+
+  const cals = []; const calUsed = new Set()
+  while (cals.length < numCal) { const t = pick(rand, CALENDAR_TEMPLATES); if (!calUsed.has(t.title)) { cals.push({ ...t }); calUsed.add(t.title) } }
+
+  const calls = []; const callUsed = new Set()
+  while (calls.length < numCall) { const t = pick(rand, CALL_TEMPLATES); if (!callUsed.has(t.title)) { calls.push({ ...t }); callUsed.add(t.title) } }
+
+  const emails = []; const emailUsed = new Set()
+  while (emails.length < numEmail) { const t = pick(rand, EMAIL_TEMPLATES); if (!emailUsed.has(t.title)) { emails.push({ ...t }); emailUsed.add(t.title) } }
+
+  // Interleave all activities sequentially
+  const allItems = [
+    ...computers.map(t => ({ ...t, type: 'document', actType: t.app.includes('Chrome') ? 'browser' : 'document' })),
+    ...cals.map(t => ({ ...t, type: 'calendar', actType: 'calendar', app: 'Calendar' })),
+    ...calls.map(t => ({ ...t, type: 'call', actType: 'call' })),
+    ...emails.map(t => ({ ...t, type: 'email', actType: 'email', app: 'Microsoft Outlook' })),
+  ]
+
+  // Shuffle
+  for (let i = allItems.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [allItems[i], allItems[j]] = [allItems[j], allItems[i]]
+  }
+
+  // Place sequentially
+  const clientMinutes = {}
+  for (const item of allItems) {
+    if (cursor >= 19 * 60) break // stop at 7 PM
+    // Add small gap sometimes
+    if (rand() > 0.7) cursor += between(rand, 0, 10)
+
+    const startH = Math.floor(cursor / 60)
+    const startM = cursor % 60
+    const endCursor = cursor + item.dur
+    const endH = Math.floor(endCursor / 60)
+    const endM = endCursor % 60
+
+    const act = {
+      id,
+      app_name: item.app,
+      window_title: item.title,
+      start_time: atTime(date, startH, startM),
+      end_time: atTime(date, endH, endM),
+      duration_seconds: item.dur * 60,
+      activity_type: item.actType,
+      metadata: {},
+      client_links: item.cid ? lnk(id, item.cid) : [],
+    }
+    activities.push(act)
+
+    if (item.cid) {
+      clientMinutes[item.cid] = (clientMinutes[item.cid] || 0) + item.dur
+    }
+
+    cursor = endCursor
+    id++
+  }
+
+  // Generate AI time entries per client
+  let entryId = 1
+  const clientActivities = {}
+  for (const act of activities) {
+    if (act.client_links.length > 0) {
+      const cid = act.client_links[0].client_id
+      if (!clientActivities[cid]) clientActivities[cid] = []
+      clientActivities[cid].push(act)
+    }
+  }
+
+  for (const [cidStr, acts] of Object.entries(clientActivities)) {
+    const cid = Number(cidStr)
+    const totalMin = acts.reduce((s, a) => s + a.duration_seconds / 60, 0)
+    const roundedSec = Math.round(totalMin / 6) * 6 * 60 // 6-min billing increments
+    const first = acts[0]
+    const last = acts[acts.length - 1]
+    const descs = ENTRY_DESCRIPTIONS[cid] || ['Legal work and correspondence']
+    const desc = pick(rand, descs)
+    const isDraft = rand() > 0.6
+
+    entries.push({
+      id: entryId++,
+      client_id: cid,
+      matter_id: cid,
+      description: desc,
+      start_time: first.start_time,
+      end_time: last.end_time,
+      duration_seconds: roundedSec,
+      source: 'ai_suggested',
+      status: isDraft ? 'draft' : 'confirmed',
+      client: cl(cid),
+    })
+  }
+
+  return { activities, entries }
+}
+
+// ── Cache generated days ──────────────────────────────────────
+const dayCache = {}
+function getDay(dateStr) {
+  if (!dayCache[dateStr]) dayCache[dateStr] = generateDayData(dateStr)
+  return dayCache[dateStr]
+}
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
 
 // ── Mock API ──────────────────────────────────────────────────
 function ok(data) { return Promise.resolve({ data }) }
 
 export const api = {
-  getActivities() { return ok({ activities: ACTIVITIES, total_activities: ACTIVITIES.length }) },
+  getActivities(dateStr) {
+    if (!dateStr) dateStr = formatDate(new Date())
+    const day = getDay(dateStr)
+    return ok({ activities: day.activities, total_activities: day.activities.length })
+  },
   getClients() { return ok(CLIENTS) },
   createClient(data) { const c = { ...data, id: Date.now(), created_at: new Date().toISOString(), keywords: data.keywords || [] }; CLIENTS.push(c); return ok(c) },
   updateClient(id, data) { const c = CLIENTS.find(c => c.id === id); if (c) Object.assign(c, data); return ok(c) },
   deleteClient(id) { const i = CLIENTS.findIndex(c => c.id === id); if (i >= 0) CLIENTS.splice(i, 1); return ok({}) },
-  getTimeEntries() { return ok(TIME_ENTRIES) },
-  createTimeEntry(data) { const e = { ...data, id: Date.now(), client: cl(data.client_id) }; TIME_ENTRIES.push(e); return ok(e) },
-  updateTimeEntry(id, data) { const e = TIME_ENTRIES.find(e => e.id === id); if (e) Object.assign(e, data); return ok(e) },
-  deleteTimeEntry(id) { const i = TIME_ENTRIES.findIndex(e => e.id === id); if (i >= 0) TIME_ENTRIES.splice(i, 1); return ok({}) },
+  getTimeEntries(dateStr) {
+    if (!dateStr) dateStr = formatDate(new Date())
+    return ok(getDay(dateStr).entries)
+  },
+  createTimeEntry(data) { return ok({ ...data, id: Date.now(), client: cl(data.client_id) }) },
+  updateTimeEntry(id, data) { return ok(data) },
+  deleteTimeEntry(id) { return ok({}) },
   getDailySummary() { return ok({}) },
   runAiMatch() { return ok([]) },
   suggestEntries() { return ok({ suggestions: [] }) },
   syncAll() { return ok([]) },
-  getTrackerStatus() { return ok({ running: true, uptime_seconds: 3600, activities_captured: ACTIVITIES.length }) },
+  getTrackerStatus() { return ok({ running: true, uptime_seconds: 3600, activities_captured: 26 }) },
   startTracker() { return ok({ running: true }) },
   stopTracker() { return ok({ running: false }) },
 }
