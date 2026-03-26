@@ -171,12 +171,6 @@ export default function ActivityDetail({ activity, position, clients, onClose, o
           )}
         </div>
 
-        <div className="activity-popup-footer">
-          <button className="btn btn-primary" onClick={handleCreateEntry}>
-            <Plus size={14} />
-            Create time entry from this
-          </button>
-        </div>
       </div>
     </div>
   )
