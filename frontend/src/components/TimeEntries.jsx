@@ -25,26 +25,47 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
     return map
   }, [clients])
 
-  const enriched = useMemo(() => {
-    if (!entries) return []
-    return entries.map(e => {
-      const client = clientMap[e.client_id]
-      return {
-        ...e,
-        clientName: client?.name || 'Unassigned',
-        clientColor: client?.color || '#94a3b8',
+  // Compute totals from activities (always in sync)
+  const { enriched, unassigned, totalSeconds } = useMemo(() => {
+    if (!activities) return { enriched: [], unassigned: [], totalSeconds: 0 }
+
+    const unassigned = []
+    const byClient = {}
+
+    activities.forEach(a => {
+      if (!a.client_links || a.client_links.length === 0) {
+        unassigned.push(a)
+        return
       }
+      const cid = a.client_links[0].client_id
+      if (!byClient[cid]) byClient[cid] = { duration_seconds: 0, activities: [] }
+      byClient[cid].duration_seconds += (a.duration_seconds || 0)
+      byClient[cid].activities.push(a)
     })
-  }, [entries, clientMap])
 
-  const unassigned = useMemo(() => {
-    if (!activities) return []
-    return activities.filter(a => !a.client_links || a.client_links.length === 0)
-  }, [activities])
+    // Match with AI-generated descriptions from entries
+    const entryByClient = {}
+    if (entries) entries.forEach(e => { entryByClient[e.client_id] = e })
 
-  const totalSeconds = useMemo(() => {
-    return enriched.reduce((sum, e) => sum + (e.duration_seconds || 0), 0)
-  }, [enriched])
+    const enriched = Object.entries(byClient).map(([cidStr, data]) => {
+      const cid = Number(cidStr)
+      const client = clientMap[cid]
+      const aiEntry = entryByClient[cid]
+      return {
+        client_id: cid,
+        clientName: client?.name || 'Unknown',
+        clientColor: client?.color || '#94a3b8',
+        duration_seconds: data.duration_seconds,
+        description: aiEntry?.description || '',
+        source: aiEntry?.source || 'manual',
+        activities: data.activities,
+      }
+    }).sort((a, b) => b.duration_seconds - a.duration_seconds)
+
+    const totalSeconds = enriched.reduce((sum, e) => sum + e.duration_seconds, 0)
+
+    return { enriched, unassigned, totalSeconds }
+  }, [activities, entries, clientMap])
 
   return (
     <div className="column ai-column">
@@ -73,12 +94,10 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
 
                 return (
                   <div
-                    key={entry.id}
+                    key={entry.client_id}
                     className="ai-entry-card"
-                    style={{ '--entry-color': entry.clientColor }}
                     onClick={() => onEditEntry(entry)}
                   >
-                    {isAi && <div className="ai-shimmer" />}
                     <div className="ai-entry-top">
                       <div className="ai-entry-client">
                         {entry.clientName}

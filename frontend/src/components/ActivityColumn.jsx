@@ -144,7 +144,7 @@ export default function ActivityColumn({
                 {isEmail && <span className={`email-dir ${emailDir}`}>{emailDir === 'in' ? '\u2B07' : '\u2B06'}</span>}
                 {act.window_title || 'Unknown'}
               </div>
-              <div className="ev-dur">{formatDuration(dur)}</div>
+              {!isEmail && <div className="ev-dur">{formatDuration(dur)}</div>}
             </div>
           )
         })}

@@ -107,31 +107,12 @@ export default function Header({
           </button>
         </div>
 
-        <select
-          className="zoom-select"
-          value={zoom}
-          onChange={(e) => onZoomChange(Number(e.target.value))}
-        >
-          <option value={15}>15 min</option>
-          <option value={30}>30 min</option>
-          <option value={60}>1 hour</option>
-        </select>
       </div>
 
       <div className="header-right">
         <button className="btn btn-primary" onClick={onNewEntry} title="New time entry">
           <Plus size={14} />
           New Entry
-        </button>
-
-        <button
-          className="tracker-status"
-          onClick={toggleTracker}
-          disabled={trackerLoading}
-          title={trackerRunning ? 'Stop tracker' : 'Start tracker'}
-        >
-          <span className={`tracker-dot ${trackerRunning ? 'running' : 'stopped'}`} />
-          {trackerLoading ? 'Loading...' : trackerRunning ? 'Tracking' : 'Stopped'}
         </button>
 
         <div className="ai-status">

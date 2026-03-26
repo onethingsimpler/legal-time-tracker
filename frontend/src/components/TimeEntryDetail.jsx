@@ -59,7 +59,7 @@ export default function TimeEntryDetail({ entry, activities, onClose, onUnassign
 
           {entry.description && (
             <div className="ted-desc">
-              <div className="ted-desc-label">Billing Description</div>
+              <div className="ted-desc-label">{'\u2728'} AI Summary</div>
               <div className="ted-desc-text">{entry.description}</div>
             </div>
           )}
@@ -81,11 +81,10 @@ export default function TimeEntryDetail({ entry, activities, onClose, onUnassign
                     <div className="ted-activity-right">
                       <span className="ted-activity-dur">{dur}m</span>
                       <button
-                        className="ted-unassign"
+                        className="ted-unassign-btn"
                         onClick={(e) => { e.stopPropagation(); onUnassign(act.id) }}
-                        title="Unassign from this client"
                       >
-                        &times;
+                        Unassign
                       </button>
                     </div>
                   </div>

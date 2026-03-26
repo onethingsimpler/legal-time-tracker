@@ -8,6 +8,7 @@ import Projects from './components/Projects'
 import AddClientModal from './components/AddClientModal'
 import TimeEntryModal from './components/TimeEntryModal'
 import TimeEntryDetail from './components/TimeEntryDetail'
+import ReportView from './components/ReportView'
 
 export default function App() {
   // Core state
@@ -26,6 +27,9 @@ export default function App() {
   const [loadingClients, setLoadingClients] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [matching, setMatching] = useState(false)
+
+  // Report state
+  const [showReport, setShowReport] = useState(false)
 
   // Modal state
   const [clientModal, setClientModal] = useState({ open: false, client: null })
@@ -254,6 +258,7 @@ export default function App() {
         onAddClient={() => setClientModal({ open: true, client: null })}
         onEditClient={(client) => setClientModal({ open: true, client })}
         onExport={handleExport}
+        onReport={() => setShowReport(true)}
       />
 
       <div className="app-content">
@@ -366,6 +371,13 @@ export default function App() {
             handleUnassignActivity(activityId)
             addToast('Activity unassigned', 'success')
           }}
+        />
+      )}
+
+      {showReport && (
+        <ReportView
+          onClose={() => setShowReport(false)}
+          clients={clients}
         />
       )}
 

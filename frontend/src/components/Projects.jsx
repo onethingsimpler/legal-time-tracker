@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Plus, Download } from 'lucide-react'
+import { Plus, Download, BarChart3 } from 'lucide-react'
 
 function formatDuration(minutes) {
   if (!minutes && minutes !== 0) return '0m'
@@ -16,7 +16,7 @@ function computeEntryDuration(entry) {
   return 0
 }
 
-export default function Projects({ clients, entries, onAddClient, onEditClient, onExport }) {
+export default function Projects({ clients, entries, onAddClient, onEditClient, onExport, onReport }) {
   const clientTimes = useMemo(() => {
     const map = {}
     if (entries) {
@@ -47,9 +47,9 @@ export default function Projects({ clients, entries, onAddClient, onEditClient, 
     <div className="projects-bar">
       <div style={{ flex: 1 }} />
       <div className="projects-bar-right">
-        <button className="btn btn-secondary btn-sm" onClick={onAddClient}>
-          <Plus size={12} />
-          Add Client
+        <button className="btn btn-secondary btn-sm" onClick={onReport}>
+          <BarChart3 size={12} />
+          Report
         </button>
         <button className="btn btn-primary btn-sm" onClick={onExport}>
           <Download size={12} />
