@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 
 function formatDuration(seconds) {
   if (!seconds) return '0m'
@@ -9,7 +9,16 @@ function formatDuration(seconds) {
   return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
 
-export default function TimeEntries({ entries, clients, onEditEntry }) {
+function formatTime(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+export default function TimeEntries({ entries, clients, activities, onEditEntry, onAssign }) {
+  const [showUnassigned, setShowUnassigned] = useState(false)
+  const [assigningId, setAssigningId] = useState(null)
+  const [search, setSearch] = useState('')
   const clientMap = useMemo(() => {
     const map = {}
     if (clients) clients.forEach(c => { map[c.id] = c })
@@ -28,60 +37,113 @@ export default function TimeEntries({ entries, clients, onEditEntry }) {
     })
   }, [entries, clientMap])
 
+  const unassigned = useMemo(() => {
+    if (!activities) return []
+    return activities.filter(a => !a.client_links || a.client_links.length === 0)
+  }, [activities])
+
+  const totalSeconds = useMemo(() => {
+    return enriched.reduce((sum, e) => sum + (e.duration_seconds || 0), 0)
+  }, [enriched])
+
   return (
     <div className="column ai-column">
       <div className="column-header ai-header">
-        <div className="column-title">
-          <span className="ai-header-icon">{'\u2728'}</span>
-          AI Time Entries
-          <span className="ai-live-badge">LIVE</span>
+        <div className="ai-header-top">
+          <div>
+            <div className="column-title">Totals</div>
+          </div>
+          <div className="ai-total">
+            <div className="ai-total-time">{formatDuration(totalSeconds)}</div>
+          </div>
         </div>
-        <div className="column-subtitle">Continuously generated from your activity</div>
       </div>
 
       <div className="column-body ai-entries-body">
-        {enriched.length === 0 ? (
+        {enriched.length === 0 && unassigned.length === 0 ? (
           <div className="ai-empty">
             <span className="ai-empty-icon">{'\u2728'}</span>
             <span>No entries yet</span>
           </div>
         ) : (
-          <div className="ai-entries-list">
-            {enriched.map((entry) => {
-              const isAi = entry.source === 'ai_suggested'
-              const isDraft = entry.status === 'draft'
-              const confidence = entry.confidence || 0.95
+          <>
+            <div className="ai-entries-list">
+              {enriched.map((entry) => {
+                const isAi = entry.source === 'ai_suggested'
 
-              return (
-                <div
-                  key={entry.id}
-                  className={`ai-entry-card ${isDraft ? 'draft' : 'confirmed'}`}
-                  style={{ '--entry-color': entry.clientColor }}
-                  onClick={() => onEditEntry(entry)}
-                >
-                  {isAi && <div className="ai-shimmer" />}
-                  <div className="ai-entry-top">
-                    <div className="ai-entry-client">
-                      {isAi && <span className="ai-sparkle-badge">{'\u2728'}</span>}
-                      {entry.clientName}
-                      {!isDraft && <span className="confirmed-check">{'\u2713'}</span>}
+                return (
+                  <div
+                    key={entry.id}
+                    className="ai-entry-card"
+                    style={{ '--entry-color': entry.clientColor }}
+                    onClick={() => onEditEntry(entry)}
+                  >
+                    {isAi && <div className="ai-shimmer" />}
+                    <div className="ai-entry-top">
+                      <div className="ai-entry-client">
+                        {entry.clientName}
+                      </div>
+                      <div className="ai-entry-time">
+                        <span className="ai-entry-duration">{formatDuration(entry.duration_seconds)}</span>
+                      </div>
                     </div>
-                    <div className="ai-entry-time">
-                      <span className="ai-entry-duration">{formatDuration(entry.duration_seconds)}</span>
-                      {isAi && <span className="ai-confidence">{Math.round(confidence * 100)}%</span>}
-                    </div>
+                    <div className="ai-entry-desc">{entry.description}</div>
                   </div>
-                  <div className="ai-entry-desc">{entry.description}</div>
-                  {isDraft && (
-                    <div className="ai-entry-status">
-                      <span className="pulse-dot" />
-                      Awaiting review
-                    </div>
-                  )}
+                )
+              })}
+            </div>
+
+            {unassigned.length > 0 && (
+              <div className="unassigned-box">
+                <div className="unassigned-box-header" onClick={() => { setShowUnassigned(!showUnassigned); setAssigningId(null); setSearch('') }}>
+                  <span className="unassigned-box-dot" />
+                  <span className="unassigned-box-text">{unassigned.length} unassigned {unassigned.length === 1 ? 'activity' : 'activities'}</span>
+                  <span className="unassigned-box-arrow">{showUnassigned ? '\u25B2' : '\u25BC'}</span>
                 </div>
-              )
-            })}
-          </div>
+                {showUnassigned && (
+                  <div className="unassigned-box-list">
+                    {unassigned.map(act => {
+                      const dur = Math.round((act.duration_seconds || 0) / 60)
+                      const isAssigning = assigningId === act.id
+                      const filtered = clients ? clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase())) : []
+
+                      return (
+                        <div key={act.id} className="unassigned-item">
+                          <div className="unassigned-item-info">
+                            <div className="unassigned-item-title">{act.window_title}</div>
+                            <div className="unassigned-item-meta">{act.app_name} &middot; {formatTime(act.start_time)} &middot; {dur}m</div>
+                          </div>
+                          {isAssigning ? (
+                            <div className="unassigned-assign-panel">
+                              <input
+                                className="unassigned-search"
+                                placeholder="Search..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                autoFocus
+                              />
+                              <div className="unassigned-client-list">
+                                {filtered.map(c => (
+                                  <div key={c.id} className="unassigned-client-option" onClick={() => { onAssign(act.id, c.id); setAssigningId(null); setSearch('') }}>
+                                    <span className="unassigned-client-dot" style={{ backgroundColor: c.color }} />
+                                    {c.name}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <button className="unassigned-assign-btn" onClick={() => { setAssigningId(act.id); setSearch('') }}>
+                              Assign
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

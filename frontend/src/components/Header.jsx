@@ -8,6 +8,7 @@ import {
   Sparkles,
   Loader2,
   Plus,
+  Search,
 } from 'lucide-react'
 import { api } from '../api'
 
@@ -20,6 +21,8 @@ export default function Header({
   syncing,
   aiActive,
   onNewEntry,
+  searchQuery,
+  onSearchChange,
 }) {
   const [trackerRunning, setTrackerRunning] = useState(false)
   const [trackerLoading, setTrackerLoading] = useState(false)
@@ -78,6 +81,16 @@ export default function Header({
         <div className="header-logo">
           Legal<span>TimeTracker</span>
         </div>
+        <div className="header-search">
+          <Search size={14} className="header-search-icon" />
+          <input
+            type="text"
+            className="header-search-input"
+            placeholder="Search activities..."
+            value={searchQuery}
+            onChange={e => onSearchChange(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="header-center">
@@ -119,19 +132,6 @@ export default function Header({
         >
           <span className={`tracker-dot ${trackerRunning ? 'running' : 'stopped'}`} />
           {trackerLoading ? 'Loading...' : trackerRunning ? 'Tracking' : 'Stopped'}
-        </button>
-
-        <button
-          className="btn btn-secondary"
-          onClick={onSyncAll}
-          disabled={syncing}
-        >
-          {syncing ? (
-            <Loader2 size={14} className="spinner" />
-          ) : (
-            <RefreshCw size={14} />
-          )}
-          Sync All
         </button>
 
         <div className="ai-status">

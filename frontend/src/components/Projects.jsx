@@ -11,12 +11,8 @@ function formatDuration(minutes) {
 }
 
 function computeEntryDuration(entry) {
+  if (entry.duration_seconds) return Math.round(entry.duration_seconds / 60)
   if (entry.duration_minutes) return entry.duration_minutes
-  if (entry.start_time && entry.end_time) {
-    const start = new Date(entry.start_time)
-    const end = new Date(entry.end_time)
-    return Math.round((end - start) / 60000)
-  }
   return 0
 }
 
@@ -49,28 +45,8 @@ export default function Projects({ clients, entries, onAddClient, onEditClient, 
 
   return (
     <div className="projects-bar">
-      <div className="projects-bar-clients">
-        {sortedClients.map((client, idx) => {
-          const time = clientTimes[client.id] || 0
-          return (
-            <div
-              key={client.id}
-              className="projects-bar-item"
-              onClick={() => onEditClient(client)}
-            >
-              <span className="projects-bar-dot" style={{ backgroundColor: client.color }} />
-              <span className="projects-bar-name">{client.name}</span>
-              <span className="projects-bar-time">{formatDuration(time)}</span>
-            </div>
-          )
-        })}
-      </div>
-
+      <div style={{ flex: 1 }} />
       <div className="projects-bar-right">
-        <div className="projects-bar-total">
-          <span className="projects-bar-total-label">Total</span>
-          <span className="projects-bar-total-time">{formatDuration(totalMinutes)}</span>
-        </div>
         <button className="btn btn-secondary btn-sm" onClick={onAddClient}>
           <Plus size={12} />
           Add Client

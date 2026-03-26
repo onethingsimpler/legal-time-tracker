@@ -30,56 +30,67 @@ function lnk(id, cid) { return [{ id, activity_id: id, client_id: cid, confidenc
 
 // ── Activity templates (shuffled per day) ─────────────────────
 const COMPUTER_TEMPLATES = [
-  { app: 'Microsoft Word', title: 'Morgan_Ltd_Service_Agreement_v4_REDLINE.docx', dur: 45, cid: 1 },
-  { app: 'Adobe Acrobat', title: 'Morgan_Ltd_Board_Resolution_2026.pdf', dur: 15, cid: 1 },
-  { app: 'Microsoft Word', title: 'Morgan_Subsidiary_Merger_Analysis.docx', dur: 30, cid: 1 },
-  { app: 'Microsoft Excel', title: 'AcmeCorp_Q1_Billing_Reconciliation.xlsx', dur: 30, cid: 4 },
-  { app: 'Microsoft Word', title: 'Axion_IP_Claim_Response_FINAL.docx', dur: 45, cid: 2 },
-  { app: 'Google Chrome', title: 'Westlaw - Patent Infringement Case Law 2025-2026', dur: 30, cid: 2 },
-  { app: 'Microsoft PowerPoint', title: 'Daven_Vendor_Performance_Brief_Q1.pptx', dur: 30, cid: 5 },
-  { app: 'Microsoft Word', title: 'Harper_Exec_Employment_Agreement_v3_TRACKED.docx', dur: 45, cid: 3 },
-  { app: 'Adobe Acrobat', title: 'AcmeCorp_Regulatory_Compliance_Checklist.pdf', dur: 15, cid: 4 },
-  { app: 'Google Chrome', title: 'SEC.gov - Recent Enforcement Actions & Compliance', dur: 15, cid: 4 },
-  { app: 'Microsoft Word', title: 'Daven_Litigation_Memo_re_Discovery_Responses.docx', dur: 30, cid: 5 },
-  { app: 'Microsoft Word', title: 'Harper_Real_Estate_Due_Diligence_Report.docx', dur: 30, cid: 3 },
-  { app: 'Adobe Acrobat', title: 'Axion_Software_License_Agreement_Draft.pdf', dur: 20, cid: 2 },
-  { app: 'Microsoft Excel', title: 'Morgan_Ltd_Fee_Estimate_2026.xlsx', dur: 20, cid: 1 },
-  { app: 'Google Chrome', title: 'LexisNexis - Employment Law Precedents', dur: 25, cid: 3 },
+  { app: 'Microsoft Word', title: 'Morgan_Ltd_Service_Agreement_v4_REDLINE.docx', dur: [38, 47, 52], cid: 1 },
+  { app: 'Adobe Acrobat', title: 'Morgan_Ltd_Board_Resolution_2026.pdf', dur: [11, 14, 18], cid: 1 },
+  { app: 'Microsoft Word', title: 'Morgan_Subsidiary_Merger_Analysis.docx', dur: [26, 33, 41], cid: 1 },
+  { app: 'Microsoft Excel', title: 'AcmeCorp_Q1_Billing_Reconciliation.xlsx', dur: [22, 28, 34], cid: 4 },
+  { app: 'Microsoft Word', title: 'Axion_IP_Claim_Response_FINAL.docx', dur: [37, 43, 51], cid: 2 },
+  { app: 'Google Chrome', title: 'Westlaw - Patent Infringement Case Law 2025-2026', dur: [23, 31, 27], cid: 2 },
+  { app: 'Microsoft PowerPoint', title: 'Daven_Vendor_Performance_Brief_Q1.pptx', dur: [24, 33, 29], cid: 5 },
+  { app: 'Microsoft Word', title: 'Harper_Exec_Employment_Agreement_v3_TRACKED.docx', dur: [39, 47, 53], cid: 3 },
+  { app: 'Adobe Acrobat', title: 'AcmeCorp_Regulatory_Compliance_Checklist.pdf', dur: [12, 17, 9], cid: 4 },
+  { app: 'Google Chrome', title: 'SEC.gov - Recent Enforcement Actions & Compliance', dur: [11, 16, 13], cid: 4 },
+  { app: 'Microsoft Word', title: 'Daven_Litigation_Memo_re_Discovery_Responses.docx', dur: [26, 34, 31], cid: 5 },
+  { app: 'Microsoft Word', title: 'Harper_Real_Estate_Due_Diligence_Report.docx', dur: [28, 36, 22], cid: 3 },
+  { app: 'Adobe Acrobat', title: 'Axion_Software_License_Agreement_Draft.pdf', dur: [17, 23, 14], cid: 2 },
+  { app: 'Microsoft Excel', title: 'Morgan_Ltd_Fee_Estimate_2026.xlsx', dur: [18, 24, 21], cid: 1 },
+  { app: 'Google Chrome', title: 'LexisNexis - Employment Law Precedents', dur: [19, 27, 22], cid: 3 },
 ]
 
 const CALENDAR_TEMPLATES = [
-  { title: 'Team Standup - Litigation Group', dur: 15, cid: 0 },
-  { title: 'Morgan Ltd. - Contract Negotiation Call', dur: 30, cid: 1 },
-  { title: 'Lunch - Partner Review (Private)', dur: 45, cid: 0 },
-  { title: 'AcmeCorp - Compliance Review & Audit Prep', dur: 30, cid: 4 },
-  { title: 'Harper & Associates - Employment Terms Follow-up', dur: 30, cid: 3 },
-  { title: 'Internal - Pro Bono Case Review', dur: 20, cid: 0 },
-  { title: 'Daven Ltd. - Litigation Strategy Meeting', dur: 30, cid: 5 },
-  { title: 'Axion Ltd. - Patent Portfolio Review', dur: 30, cid: 2 },
+  { title: 'Team Standup - Litigation Group', dur: [12, 17, 14], cid: 0 },
+  { title: 'Morgan Ltd. - Contract Negotiation Call', dur: [28, 34, 31], cid: 1 },
+  { title: 'Lunch - Partner Review (Private)', dur: [42, 51, 38], cid: 0 },
+  { title: 'AcmeCorp - Compliance Review & Audit Prep', dur: [27, 33, 31], cid: 4 },
+  { title: 'Harper & Associates - Employment Terms Follow-up', dur: [26, 32, 29], cid: 3 },
+  { title: 'Internal - Pro Bono Case Review', dur: [18, 23, 21], cid: 0 },
+  { title: 'Daven Ltd. - Litigation Strategy Meeting', dur: [27, 34, 31], cid: 5 },
+  { title: 'Axion Ltd. - Patent Portfolio Review', dur: [28, 33, 26], cid: 2 },
 ]
 
 const CALL_TEMPLATES = [
-  { app: 'Phone', title: 'Sarah Chen (Morgan Ltd. - General Counsel)', dur: 15, cid: 1 },
-  { app: 'FaceTime', title: 'James Harper - (917) 555-0142', dur: 30, cid: 3 },
-  { app: 'Phone', title: 'John Daven - (212) 555-0198', dur: 15, cid: 5 },
-  { app: 'Phone', title: 'Opposing Counsel - Richards & Webb LLP', dur: 15, cid: 5 },
-  { app: 'Zoom', title: 'AcmeCorp - Compliance Review Call', dur: 30, cid: 4 },
-  { app: 'Phone', title: 'Court Clerk - NY Supreme Court (Filing Confirmation)', dur: 10, cid: 5 },
-  { app: 'Phone', title: 'Robert Kim (Axion Ltd. - VP Legal)', dur: 20, cid: 2 },
-  { app: 'FaceTime', title: 'Morgan Ltd. - Board Secretary', dur: 15, cid: 1 },
+  { app: 'Phone', title: 'Sarah Chen (Morgan Ltd. - General Counsel)', dur: [11, 17, 14], cid: 1 },
+  { app: 'FaceTime', title: 'James Harper - (917) 555-0142', dur: [23, 31, 27], cid: 3 },
+  { app: 'Phone', title: 'John Daven - (212) 555-0198', dur: [12, 18, 16], cid: 5 },
+  { app: 'Phone', title: 'Opposing Counsel - Richards & Webb LLP', dur: [9, 16, 13], cid: 5 },
+  { app: 'Zoom', title: 'AcmeCorp - Compliance Review Call', dur: [26, 33, 29], cid: 4 },
+  { app: 'Phone', title: 'Court Clerk - NY Supreme Court (Filing Confirmation)', dur: [7, 12, 9], cid: 5 },
+  { app: 'Phone', title: 'Robert Kim (Axion Ltd. - VP Legal)', dur: [16, 22, 19], cid: 2 },
+  { app: 'FaceTime', title: 'Morgan Ltd. - Board Secretary', dur: [11, 17, 13], cid: 1 },
+]
+
+const UNMATCHED_TEMPLATES = [
+  { app: 'Phone', title: 'Unknown Number - (646) 555-0331', dur: [6, 11, 8], cid: 0, actType: 'call' },
+  { app: 'Phone', title: 'Voicemail - (212) 555-0477', dur: [3, 5, 4], cid: 0, actType: 'call' },
+  { app: 'Google Chrome', title: 'Google Maps - Restaurant Directions', dur: [4, 7, 5], cid: 0, actType: 'browser' },
+  { app: 'Microsoft Outlook', title: 'CLE Webinar Registration Confirmation', dur: [3, 6, 4], cid: 0, actType: 'email' },
+  { app: 'Microsoft Outlook', title: 'Office Supply Order - Staples Confirmation', dur: [2, 5, 3], cid: 0, actType: 'email' },
+  { app: 'Google Chrome', title: 'LinkedIn - 3 New Connection Requests', dur: [5, 9, 7], cid: 0, actType: 'browser' },
+  { app: 'Phone', title: 'Dr. Martinez Office - (917) 555-0289', dur: [4, 8, 6], cid: 0, actType: 'call' },
+  { app: 'Microsoft Outlook', title: 'Bar Association - Annual Dues Reminder', dur: [3, 5, 4], cid: 0, actType: 'email' },
 ]
 
 const EMAIL_TEMPLATES = [
-  { title: 'Re: Morgan Ltd - Service Agreement Amendment (Sarah Chen)', dur: 15, cid: 1 },
-  { title: 'Re: Introduction - Axion Ltd. IP Matters', dur: 15, cid: 2 },
-  { title: 'Axion Ltd. - Patent Filing Deadline Reminder (Mar 31)', dur: 15, cid: 2 },
-  { title: 'Re: Harper Employment Agreement - Final Comments from James', dur: 15, cid: 3 },
-  { title: 'AcmeCorp - Q1 Invoice #2026-0341 Attached', dur: 15, cid: 4 },
-  { title: 'Meeting Notes: AcmeCorp Compliance Audit Prep', dur: 15, cid: 4 },
-  { title: 'Daven Ltd. - Discovery Responses Due April 7', dur: 10, cid: 5 },
-  { title: 'FW: Board Resolution - Morgan Ltd. Restructuring', dur: 15, cid: 1 },
-  { title: 'Re: Daven Vendor Performance - Action Items', dur: 10, cid: 5 },
-  { title: 'Harper & Associates - Office Lease Review', dur: 15, cid: 3 },
+  { title: 'Re: Morgan Ltd - Service Agreement Amendment (Sarah Chen)', dur: [8, 14, 11], cid: 1 },
+  { title: 'Re: Introduction - Axion Ltd. IP Matters', dur: [9, 16, 12], cid: 2 },
+  { title: 'Axion Ltd. - Patent Filing Deadline Reminder (Mar 31)', dur: [7, 13, 11], cid: 2 },
+  { title: 'Re: Harper Employment Agreement - Final Comments from James', dur: [11, 17, 14], cid: 3 },
+  { title: 'AcmeCorp - Q1 Invoice #2026-0341 Attached', dur: [8, 14, 11], cid: 4 },
+  { title: 'Meeting Notes: AcmeCorp Compliance Audit Prep', dur: [12, 18, 16], cid: 4 },
+  { title: 'Daven Ltd. - Discovery Responses Due April 7', dur: [7, 12, 9], cid: 5 },
+  { title: 'FW: Board Resolution - Morgan Ltd. Restructuring', dur: [9, 14, 11], cid: 1 },
+  { title: 'Re: Daven Vendor Performance - Action Items', dur: [8, 13, 11], cid: 5 },
+  { title: 'Harper & Associates - Office Lease Review', dur: [10, 16, 13], cid: 3 },
 ]
 
 const ENTRY_DESCRIPTIONS = {
@@ -104,7 +115,6 @@ function generateDayData(dateStr) {
   let id = 1
   let cursor = 8 * 60 + 30 // start at 8:30 AM in minutes
 
-  // Pick 7-10 computer activities
   const numComputer = between(rand, 7, 10)
   const computers = []
   const used = new Set()
@@ -127,12 +137,21 @@ function generateDayData(dateStr) {
   const emails = []; const emailUsed = new Set()
   while (emails.length < numEmail) { const t = pick(rand, EMAIL_TEMPLATES); if (!emailUsed.has(t.title)) { emails.push({ ...t }); emailUsed.add(t.title) } }
 
+  // Pick 2-3 unmatched activities
+  const numUnmatched = between(rand, 2, 3)
+  const unmatched = []; const unmatchedUsed = new Set()
+  while (unmatched.length < numUnmatched) { const t = pick(rand, UNMATCHED_TEMPLATES); if (!unmatchedUsed.has(t.title)) { unmatched.push({ ...t }); unmatchedUsed.add(t.title) } }
+
+  // Resolve durations from arrays
+  const resolve = (t) => ({ ...t, dur: Array.isArray(t.dur) ? pick(rand, t.dur) : t.dur })
+
   // Interleave all activities sequentially
   const allItems = [
-    ...computers.map(t => ({ ...t, type: 'document', actType: t.app.includes('Chrome') ? 'browser' : 'document' })),
-    ...cals.map(t => ({ ...t, type: 'calendar', actType: 'calendar', app: 'Calendar' })),
-    ...calls.map(t => ({ ...t, type: 'call', actType: 'call' })),
-    ...emails.map(t => ({ ...t, type: 'email', actType: 'email', app: 'Microsoft Outlook' })),
+    ...computers.map(t => ({ ...resolve(t), type: 'document', actType: t.app.includes('Chrome') ? 'browser' : 'document' })),
+    ...cals.map(t => ({ ...resolve(t), type: 'calendar', actType: 'calendar', app: 'Calendar' })),
+    ...calls.map(t => ({ ...resolve(t), type: 'call', actType: 'call' })),
+    ...emails.map(t => ({ ...resolve(t), type: 'email', actType: 'email', app: 'Microsoft Outlook' })),
+    ...unmatched.map(t => ({ ...resolve(t), type: t.actType })),
   ]
 
   // Shuffle
@@ -145,8 +164,8 @@ function generateDayData(dateStr) {
   const clientMinutes = {}
   for (const item of allItems) {
     if (cursor >= 19 * 60) break // stop at 7 PM
-    // Add small gap sometimes
-    if (rand() > 0.7) cursor += between(rand, 0, 10)
+    // Small gap between activities
+    if (rand() > 0.5) cursor += between(rand, 3, 10)
 
     const startH = Math.floor(cursor / 60)
     const startM = cursor % 60

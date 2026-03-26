@@ -10,125 +10,91 @@ function formatDuration(minutes) {
   return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
 
-function formatTime(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-}
+const SLOT = 30 // 30-min grid
+const ROW_HEIGHT = 56
 
-function generateTimeSlots(zoom) {
+function generateTimeSlots() {
   const slots = []
   for (let hour = 6; hour < 22; hour++) {
-    for (let min = 0; min < 60; min += zoom) {
+    for (let min = 0; min < 60; min += SLOT) {
       const h = hour % 12 || 12
       const ampm = hour < 12 ? 'AM' : 'PM'
-      const minStr = min === 0 ? '00' : String(min).padStart(2, '0')
+      const minStr = String(min).padStart(2, '0')
       slots.push({
-        hour,
-        minute: min,
         label: `${h}:${minStr} ${ampm}`,
         key: `${hour}:${minStr}`,
+        minutes: hour * 60 + min,
       })
     }
   }
   return slots
 }
 
-function getActivitySlotKey(activity, zoom) {
-  const startTime = activity.start_time || activity.timestamp
-  if (!startTime) return null
-  const d = new Date(startTime)
+const TIME_SLOTS = generateTimeSlots()
+
+function getSlotKey(activity) {
+  if (!activity.start_time) return null
+  const d = new Date(activity.start_time)
   const hour = d.getHours()
-  const minute = Math.floor(d.getMinutes() / zoom) * zoom
+  const minute = Math.floor(d.getMinutes() / SLOT) * SLOT
   return `${hour}:${String(minute).padStart(2, '0')}`
 }
 
-function computeDuration(activity) {
-  if (activity.duration_minutes) return activity.duration_minutes
+function getDuration(activity) {
   if (activity.start_time && activity.end_time) {
-    const start = new Date(activity.start_time)
-    const end = new Date(activity.end_time)
-    return Math.round((end - start) / 60000)
+    return Math.round((new Date(activity.end_time) - new Date(activity.start_time)) / 60000)
   }
   return null
 }
 
 export default function ActivityColumn({
-  title,
-  subtitle,
-  icon,
-  filterTypes,
-  emptyIcon,
-  emptyMessage,
-  activities,
-  zoom,
-  clients,
-  onCreateEntry,
+  title, subtitle, icon, filterTypes, emptyIcon, emptyMessage,
+  activities, zoom, clients, onCreateEntry, onAssign, onUpdateTime,
 }) {
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 })
 
   const filteredActivities = useMemo(() => {
     if (!activities) return []
-    if (!filterTypes || filterTypes.length === 0) return activities
-    return activities.filter((a) => filterTypes.includes(a.activity_type))
+    if (!filterTypes?.length) return activities
+    return activities.filter(a => filterTypes.includes(a.activity_type))
   }, [activities, filterTypes])
-
-  const timeSlots = useMemo(() => generateTimeSlots(zoom), [zoom])
-
-  const activitiesBySlot = useMemo(() => {
-    const map = {}
-    filteredActivities.forEach((act) => {
-      const key = getActivitySlotKey(act, zoom)
-      if (key) {
-        if (!map[key]) map[key] = []
-        map[key].push(act)
-      }
-    })
-    return map
-  }, [filteredActivities, zoom])
 
   const clientMap = useMemo(() => {
     const map = {}
-    if (clients) {
-      clients.forEach((c) => {
-        map[c.id] = c
-      })
-    }
+    if (clients) clients.forEach(c => { map[c.id] = c })
     return map
   }, [clients])
 
-  const totalCount = filteredActivities.length
-
-  function handleActivityClick(e, activity) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setPopupPosition({
-      top: rect.top,
-      left: rect.right + 8,
+  const bySlot = useMemo(() => {
+    const map = {}
+    filteredActivities.forEach(act => {
+      const key = getSlotKey(act)
+      if (key) { if (!map[key]) map[key] = []; map[key].push(act) }
     })
-    setSelectedActivity(activity)
+    return map
+  }, [filteredActivities])
+
+  function handleClick(e, act) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setPopupPosition({ top: rect.top, left: rect.right + 8 })
+    setSelectedActivity(act)
   }
 
-  function getMatchedColor(activity) {
-    if (activity.client_links && activity.client_links.length > 0) {
-      const link = activity.client_links[0]
-      const client = clientMap[link.client_id]
-      if (client) return client.color
-    }
-    if (activity.matched_client_id && clientMap[activity.matched_client_id]) {
-      return clientMap[activity.matched_client_id].color
+  function getMatchedColor(act) {
+    if (act.client_links?.length > 0) {
+      const c = clientMap[act.client_links[0].client_id]
+      if (c) return c.color
     }
     return null
   }
-
-  const rowHeight = zoom === 15 ? 48 : zoom === 30 ? 64 : 80
 
   return (
     <div className="column source-column">
       <div className="column-header">
         <div className="column-title">
           <span className="column-icon">{icon}</span> {title}
-          {totalCount > 0 && <span className="column-count">{totalCount}</span>}
+          {filteredActivities.length > 0 && <span className="column-count">{filteredActivities.length}</span>}
         </div>
         <div className="column-subtitle">{subtitle}</div>
       </div>
@@ -140,35 +106,34 @@ export default function ActivityColumn({
             <div className="no-activities-text">{emptyMessage || 'No data yet'}</div>
           </div>
         ) : (
-          <div className="timeline" style={{ '--row-height': `${rowHeight}px` }}>
-            {timeSlots.map((slot) => {
-              const slotActivities = activitiesBySlot[slot.key] || []
+          <div className="timeline">
+            {TIME_SLOTS.map(slot => {
+              const acts = bySlot[slot.key] || []
               return (
-                <div key={slot.key} className="timeline-row" style={{ minHeight: rowHeight }}>
-                  <div className="timeline-time">{slot.label}</div>
-                  <div className="timeline-content">
-                    {slotActivities.map((act, idx) => {
-                      const matchedColor = getMatchedColor(act)
-                      const duration = computeDuration(act)
+                <div key={slot.key} className="tl-row" style={{ minHeight: ROW_HEIGHT }}>
+                  <div className="tl-time">{slot.label}</div>
+                  <div className="tl-content">
+                    {acts.map((act, idx) => {
+                      const matched = getMatchedColor(act)
+                      const dur = getDuration(act)
+                      const assignedBy = act.client_links?.[0]?.matched_by
+                      const isAi = assignedBy && assignedBy !== 'manual'
+                      const isEmail = act.activity_type === 'email'
+                      const emailDir = isEmail ? (act.window_title?.startsWith('Re:') || act.window_title?.startsWith('FW:') ? 'in' : 'out') : null
+
                       return (
                         <div
                           key={act.id || idx}
-                          className={`activity-card ${matchedColor ? 'matched' : ''}`}
-                          style={matchedColor ? { '--matched-color': matchedColor } : undefined}
-                          onClick={(e) => handleActivityClick(e, act)}
+                          className={`tl-card ${matched ? '' : 'unmatched'}`}
+                          data-type={act.activity_type}
+                          onClick={e => handleClick(e, act)}
                         >
-                          <div className="activity-info">
-                            <div className="activity-desc">
-                              {act.window_title || act.title || act.description || 'Unknown'}
-                            </div>
-                            <div className="activity-meta">
-                              {act.app_name || ''}{act.app_name && act.start_time ? ' \u00b7 ' : ''}
-                              {act.start_time ? formatTime(act.start_time) : ''}
-                            </div>
-                          </div>
-                          {duration != null && (
-                            <span className="activity-duration">{formatDuration(duration)}</span>
-                          )}
+                          {isAi && <span className="tl-ai">{'\u2728'}</span>}
+                          <span className="tl-desc">
+                            {isEmail && <span className={`email-dir ${emailDir}`}>{emailDir === 'in' ? '\u2B07' : '\u2B06'}</span>}
+                            {act.window_title || 'Unknown'}
+                          </span>
+                          {dur != null && <span className="tl-dur">{formatDuration(dur)}</span>}
                         </div>
                       )
                     })}
@@ -186,7 +151,8 @@ export default function ActivityColumn({
           position={popupPosition}
           clients={clients}
           onClose={() => setSelectedActivity(null)}
-          onCreateEntry={onCreateEntry}
+          onAssign={onAssign}
+          onUpdateTime={onUpdateTime}
         />
       )}
     </div>

@@ -7,11 +7,13 @@ import TimeEntries from './components/TimeEntries'
 import Projects from './components/Projects'
 import AddClientModal from './components/AddClientModal'
 import TimeEntryModal from './components/TimeEntryModal'
+import TimeEntryDetail from './components/TimeEntryDetail'
 
 export default function App() {
   // Core state
   const [date, setDate] = useState(new Date())
   const [zoom, setZoom] = useState(30)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Data state
   const [activities, setActivities] = useState([])
@@ -116,39 +118,7 @@ export default function App() {
     }
   }
 
-  // Auto AI matching - runs continuously
-  const [aiActive, setAiActive] = useState(true)
-
-  useEffect(() => {
-    if (!aiActive || activities.length === 0 || clients.length === 0) return
-
-    // Run AI match silently on initial load
-    const timeout = setTimeout(async () => {
-      try {
-        await api.runAiMatch(dateStr)
-        fetchActivities()
-        fetchEntries()
-      } catch {
-        // AI matching runs silently
-      }
-    }, 2000)
-
-    // Then poll every 30s
-    const interval = setInterval(async () => {
-      try {
-        await api.runAiMatch(dateStr)
-        fetchActivities()
-        fetchEntries()
-      } catch {
-        // silent
-      }
-    }, 30000)
-
-    return () => {
-      clearTimeout(timeout)
-      clearInterval(interval)
-    }
-  }, [aiActive, dateStr, activities.length, clients.length])
+  const [aiActive] = useState(true)
 
   // Client CRUD
   async function handleSaveClient(data) {
@@ -179,36 +149,47 @@ export default function App() {
     }
   }
 
-  // Time Entry CRUD
-  async function handleSaveEntry(data) {
-    try {
-      if (data.id) {
-        await api.updateTimeEntry(data.id, data)
-        addToast('Time entry updated', 'success')
-      } else {
-        await api.createTimeEntry(data)
-        addToast('Time entry created', 'success')
-      }
-      setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })
-      fetchEntries()
-    } catch {
-      addToast('Failed to save time entry', 'error')
+  // New entry → adds as an activity in the source columns
+  function handleSaveEntry(data) {
+    const clientId = data.client_id ? Number(data.client_id) : null
+    const client = clientId ? clients.find(c => c.id === clientId) : null
+    const durSec = (data.duration_minutes || 0) * 60
+
+    const appNames = { call: 'Phone', email: 'Microsoft Outlook', calendar: 'Calendar', document: 'App' }
+    const newActivity = {
+      id: Date.now(),
+      app_name: appNames[data.activity_type] || 'App',
+      window_title: data.matter || data.description || 'Manual entry',
+      start_time: data.start_time,
+      end_time: data.end_time,
+      duration_seconds: durSec,
+      activity_type: data.activity_type || 'document',
+      metadata: {},
+      client_links: client ? [{ id: Date.now(), activity_id: Date.now(), client_id: clientId, confidence: 1, matched_by: 'manual', client }] : [],
     }
+    setActivities(prev => [...prev, newActivity])
+    addToast('Entry added', 'success')
+    setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })
   }
 
-  async function handleDeleteEntry(id) {
-    try {
-      await api.deleteTimeEntry(id)
-      addToast('Time entry deleted', 'success')
-      setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })
-      fetchEntries()
-    } catch {
-      addToast('Failed to delete time entry', 'error')
-    }
+  function handleDeleteEntry(id) {
+    setEntries(prev => prev.filter(e => e.id !== id))
+    addToast('Time entry deleted', 'success')
+    setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })
   }
+
+  // Time Entry Detail (view breakdown)
+  const [detailEntry, setDetailEntry] = useState(null)
 
   function handleEditEntry(entry) {
-    setEntryModal({ open: true, entry, defaultStartTime: '', defaultEndTime: '' })
+    setDetailEntry(entry)
+  }
+
+  function handleUnassignActivity(activityId) {
+    setActivities(prev => prev.map(a => {
+      if (a.id !== activityId) return a
+      return { ...a, client_links: [] }
+    }))
   }
 
   function handleCreateEntry(hints = {}) {
@@ -220,8 +201,37 @@ export default function App() {
     })
   }
 
+  const filteredActivities = searchQuery
+    ? activities.filter(a => (a.window_title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (a.app_name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+    : activities
+
   function handleExport() {
     addToast('Export feature coming soon', 'info')
+  }
+
+  function handleUpdateActivityTime(activityId, startTime, endTime) {
+    setActivities(prev => prev.map(a => {
+      if (a.id !== activityId) return a
+      const base = new Date(a.start_time)
+      const [sh, sm] = startTime.split(':').map(Number)
+      const [eh, em] = endTime.split(':').map(Number)
+      const newStart = new Date(base); newStart.setHours(sh, sm, 0, 0)
+      const newEnd = new Date(base); newEnd.setHours(eh, em, 0, 0)
+      const durSec = (newEnd - newStart) / 1000
+      return { ...a, start_time: newStart.toISOString(), end_time: newEnd.toISOString(), duration_seconds: durSec }
+    }))
+  }
+
+  function handleAssignActivity(activityId, clientId) {
+    const client = clients.find(c => c.id === clientId)
+    setActivities(prev => prev.map(a => {
+      if (a.id !== activityId) return a
+      return {
+        ...a,
+        client_links: [{ id: activityId, activity_id: activityId, client_id: clientId, confidence: 1, matched_by: 'manual', client }]
+      }
+    }))
+    addToast(`Assigned to ${client?.name}`, 'success')
   }
 
   return (
@@ -231,10 +241,10 @@ export default function App() {
         onDateChange={setDate}
         zoom={zoom}
         onZoomChange={setZoom}
-        onSyncAll={handleSyncAll}
-        syncing={syncing}
         aiActive={aiActive}
         onNewEntry={() => handleCreateEntry()}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       <Projects
@@ -253,10 +263,12 @@ export default function App() {
           filterTypes={['app', 'document', 'browser']}
           emptyIcon={'\u{1F4BB}'}
           emptyMessage="No computer activity captured yet"
-          activities={activities}
+          activities={filteredActivities}
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
+          onAssign={handleAssignActivity}
+          onUpdateTime={handleUpdateActivityTime}
         />
 
         <ActivityColumn
@@ -266,7 +278,7 @@ export default function App() {
           filterTypes={['calendar']}
           emptyIcon={'\u{1F4C5}'}
           emptyMessage="No calendar events synced"
-          activities={activities}
+          activities={filteredActivities}
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
@@ -279,7 +291,7 @@ export default function App() {
           filterTypes={['call']}
           emptyIcon={'\u{1F4DE}'}
           emptyMessage="No calls synced yet"
-          activities={activities}
+          activities={filteredActivities}
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
@@ -292,7 +304,7 @@ export default function App() {
           filterTypes={['email']}
           emptyIcon={'\u{1F4E7}'}
           emptyMessage="No emails synced yet"
-          activities={activities}
+          activities={filteredActivities}
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
@@ -300,10 +312,10 @@ export default function App() {
 
         <TimeEntries
           entries={entries}
-          zoom={zoom}
           clients={clients}
+          activities={filteredActivities}
           onEditEntry={handleEditEntry}
-          onCreateEntry={handleCreateEntry}
+          onAssign={handleAssignActivity}
         />
       </div>
 
@@ -326,6 +338,18 @@ export default function App() {
           onClose={() => setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })}
           defaultStartTime={entryModal.defaultStartTime}
           defaultEndTime={entryModal.defaultEndTime}
+        />
+      )}
+
+      {detailEntry && (
+        <TimeEntryDetail
+          entry={detailEntry}
+          activities={activities}
+          onClose={() => setDetailEntry(null)}
+          onUnassign={(activityId) => {
+            handleUnassignActivity(activityId)
+            addToast('Activity unassigned', 'success')
+          }}
         />
       )}
 

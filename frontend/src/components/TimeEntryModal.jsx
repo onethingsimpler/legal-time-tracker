@@ -43,25 +43,34 @@ export default function TimeEntryModal({
 }) {
   const isEditing = !!entry?.id
 
+  const [category, setCategory] = useState('document')
   const [clientId, setClientId] = useState('')
   const [matter, setMatter] = useState('')
   const [description, setDescription] = useState('')
+  const [entryDate, setEntryDate] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [saving, setSaving] = useState(false)
+
+  function toDateInput(d) {
+    const dt = new Date(d)
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+  }
 
   useEffect(() => {
     if (entry) {
       setClientId(entry.client_id || '')
       setMatter(entry.matter || '')
       setDescription(entry.description || '')
+      setEntryDate(entry.start_time ? toDateInput(entry.start_time) : toDateInput(date))
       setStartTime(timeToInputValue(entry.start_time) || defaultStartTime || '')
       setEndTime(timeToInputValue(entry.end_time) || defaultEndTime || '')
     } else {
+      setEntryDate(toDateInput(date))
       setStartTime(defaultStartTime || '')
       setEndTime(defaultEndTime || '')
     }
-  }, [entry, defaultStartTime, defaultEndTime])
+  }, [entry, date, defaultStartTime, defaultEndTime])
 
   const durationMinutes = useMemo(() => {
     if (!startTime || !endTime) return 0
@@ -79,17 +88,18 @@ export default function TimeEntryModal({
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!clientId || !startTime || !endTime) return
+    if (!startTime || !endTime) return
     if (durationMinutes <= 0) return
 
     setSaving(true)
     try {
       const data = {
+        activity_type: category,
         client_id: clientId,
         matter: matter.trim() || undefined,
         description: description.trim() || undefined,
-        start_time: buildDateTimeString(date, startTime),
-        end_time: buildDateTimeString(date, endTime),
+        start_time: buildDateTimeString(new Date(entryDate + 'T00:00:00'), startTime),
+        end_time: buildDateTimeString(new Date(entryDate + 'T00:00:00'), endTime),
         duration_minutes: durationMinutes,
       }
 
@@ -134,6 +144,21 @@ export default function TimeEntryModal({
         <form onSubmit={handleSave}>
           <div className="modal-body">
             <div className="form-group">
+              <label className="form-label">Category</label>
+              <select
+                className="form-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              >
+                <option value="document">{'\u{1F4BB}'} Computer</option>
+                <option value="calendar">{'\u{1F4C5}'} Calendar</option>
+                <option value="call">{'\u{1F4DE}'} Call</option>
+                <option value="email">{'\u{1F4E7}'} Email</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Client</label>
               <select
                 className="form-select"
@@ -142,10 +167,9 @@ export default function TimeEntryModal({
                   setClientId(e.target.value)
                   setMatter('')
                 }}
-                required
               >
-                <option value="">Select a client...</option>
-                {clients?.map((c, idx) => (
+                <option value="">None (unassigned)</option>
+                {clients?.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -154,7 +178,7 @@ export default function TimeEntryModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Matter</label>
+              <label className="form-label">Subject</label>
               <input
                 className="form-input"
                 type="text"
@@ -172,6 +196,17 @@ export default function TimeEntryModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What did you work on?"
                 rows={3}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Date</label>
+              <input
+                className="form-input"
+                type="date"
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                required
               />
             </div>
 
@@ -236,7 +271,7 @@ export default function TimeEntryModal({
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={saving || !clientId || !startTime || !endTime || durationMinutes <= 0}
+              disabled={saving || !startTime || !endTime || durationMinutes <= 0}
             >
               {saving ? 'Saving...' : isEditing ? 'Update' : 'Create Entry'}
             </button>
