@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { api } from './api'
 import Header from './components/Header'
-import ActivityColumn from './components/ActivityColumn'
+import ActivityColumn, { TimeGutter, useTimeRange } from './components/ActivityColumn'
 import TimeEntries from './components/TimeEntries'
 import Projects from './components/Projects'
 import AddClientModal from './components/AddClientModal'
@@ -119,6 +119,7 @@ export default function App() {
   }
 
   const [aiActive] = useState(true)
+  const { startHour, endHour } = useTimeRange(activities)
 
   // Client CRUD
   async function handleSaveClient(data) {
@@ -256,6 +257,7 @@ export default function App() {
       />
 
       <div className="app-content">
+        <TimeGutter startHour={startHour} endHour={endHour} />
         <ActivityColumn
           title="Computer"
           subtitle="Apps & documents"
@@ -269,6 +271,8 @@ export default function App() {
           onCreateEntry={handleCreateEntry}
           onAssign={handleAssignActivity}
           onUpdateTime={handleUpdateActivityTime}
+          startHour={startHour}
+          endHour={endHour}
         />
 
         <ActivityColumn

@@ -160,12 +160,34 @@ function generateDayData(dateStr) {
     [allItems[i], allItems[j]] = [allItems[j], allItems[i]]
   }
 
-  // Place sequentially
+  // Map activity types to their visual column so we can prevent overlap
+  // Columns: document/browser share one, calendar/call/email each get their own
+  function columnKey(actType) {
+    if (actType === 'document' || actType === 'browser' || actType === 'app') return 'doc'
+    return actType // 'calendar', 'call', 'email'
+  }
+
+  const MIN_COLUMN_GAP = 30 // minutes between activities in the same column
+
+  // Place sequentially, ensuring no overlap within a column
   const clientMinutes = {}
+  const columnLastEnd = {} // tracks the end-minute of the last activity per column
   for (const item of allItems) {
     if (cursor >= 19 * 60) break // stop at 7 PM
-    // Ensure enough gap so activities don't visually overlap in columns
+
+    // Add a gap from the previous global activity
     cursor += between(rand, 15, 25)
+
+    // Ensure this activity doesn't overlap with the previous one in the same column
+    const col = columnKey(item.actType)
+    if (columnLastEnd[col] !== undefined) {
+      const minStart = columnLastEnd[col] + MIN_COLUMN_GAP
+      if (cursor < minStart) {
+        cursor = minStart
+      }
+    }
+
+    if (cursor >= 19 * 60) break // re-check after potential push
 
     const startH = Math.floor(cursor / 60)
     const startM = cursor % 60
@@ -185,6 +207,9 @@ function generateDayData(dateStr) {
       client_links: item.cid ? lnk(id, item.cid) : [],
     }
     activities.push(act)
+
+    // Track where this column's last activity ends
+    columnLastEnd[col] = endCursor
 
     if (item.cid) {
       clientMinutes[item.cid] = (clientMinutes[item.cid] || 0) + item.dur
