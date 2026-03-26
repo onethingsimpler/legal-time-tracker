@@ -391,8 +391,8 @@ body {
 
 .gcal-label {
   position: absolute;
-  top: -8px;
-  left: 0;
+  top: -7px;
+  left: 2px;
   font-size: 9px;
   color: var(--text-muted);
   font-weight: 500;
@@ -400,14 +400,12 @@ body {
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
-  background: var(--bg-primary);
-  padding: 0 3px;
-  z-index: 3;
+  z-index: 5;
 }
 
 .gcal-event {
   position: absolute;
-  left: 4px;
+  left: 44px;
   right: 4px;
   padding: 3px 6px;
   border-radius: 4px;
