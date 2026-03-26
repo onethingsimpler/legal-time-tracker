@@ -14,7 +14,7 @@ function formatDuration(minutes) {
 const DAY_START = 6 * 60    // 6:00 AM in minutes
 const DAY_END = 22 * 60     // 10:00 PM
 const SLOT = 30             // 30-min grid
-const PX_PER_MIN = 2        // pixels per minute
+const PX_PER_MIN = 2.5      // pixels per minute
 const ROW_HEIGHT = SLOT * PX_PER_MIN  // 60px per 30-min row
 
 function minuteOfDay(dateStr) {

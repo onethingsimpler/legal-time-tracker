@@ -115,7 +115,7 @@ function generateDayData(dateStr) {
   let id = 1
   let cursor = 8 * 60 + 30 // start at 8:30 AM in minutes
 
-  const numComputer = between(rand, 7, 10)
+  const numComputer = between(rand, 5, 7)
   const computers = []
   const used = new Set()
   while (computers.length < numComputer) {
@@ -124,9 +124,9 @@ function generateDayData(dateStr) {
   }
 
   // Pick 2-4 calendar, 4-6 calls, 5-7 emails
-  const numCal = between(rand, 2, 4)
-  const numCall = between(rand, 4, 6)
-  const numEmail = between(rand, 5, 7)
+  const numCal = between(rand, 2, 3)
+  const numCall = between(rand, 3, 5)
+  const numEmail = between(rand, 3, 5)
 
   const cals = []; const calUsed = new Set()
   while (cals.length < numCal) { const t = pick(rand, CALENDAR_TEMPLATES); if (!calUsed.has(t.title)) { cals.push({ ...t }); calUsed.add(t.title) } }
@@ -164,8 +164,8 @@ function generateDayData(dateStr) {
   const clientMinutes = {}
   for (const item of allItems) {
     if (cursor >= 19 * 60) break // stop at 7 PM
-    // Small gap between activities
-    if (rand() > 0.5) cursor += between(rand, 3, 10)
+    // Ensure enough gap so activities don't visually overlap in columns
+    cursor += between(rand, 15, 25)
 
     const startH = Math.floor(cursor / 60)
     const startM = cursor % 60
