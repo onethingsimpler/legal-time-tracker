@@ -286,6 +286,10 @@ export default function App() {
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
+          onAssign={handleAssignActivity}
+          onUpdateTime={handleUpdateActivityTime}
+          startHour={startHour}
+          endHour={endHour}
         />
 
         <ActivityColumn
@@ -299,6 +303,10 @@ export default function App() {
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
+          onAssign={handleAssignActivity}
+          onUpdateTime={handleUpdateActivityTime}
+          startHour={startHour}
+          endHour={endHour}
         />
 
         <ActivityColumn
@@ -312,6 +320,10 @@ export default function App() {
           zoom={zoom}
           clients={clients}
           onCreateEntry={handleCreateEntry}
+          onAssign={handleAssignActivity}
+          onUpdateTime={handleUpdateActivityTime}
+          startHour={startHour}
+          endHour={endHour}
         />
 
         <TimeEntries
