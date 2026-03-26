@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+anthropic
+python-dateutil
+aiohttp
+apscheduler
+pyobjc-framework-EventKit; sys_platform == 'darwin'
+pyobjc-framework-Cocoa; sys_platform == 'darwin'
