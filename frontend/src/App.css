@@ -572,45 +572,111 @@ body {
   color: rgba(165, 180, 252, 0.3);
 }
 
-.time-entry-block {
+/* AI Entry Cards (list layout, no timeline) */
+
+.ai-entries-body {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.ai-entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: rgba(165, 180, 252, 0.4);
+  gap: 8px;
+  font-size: 13px;
+}
+
+.ai-empty-icon {
+  font-size: 24px;
+  opacity: 0.5;
+}
+
+.ai-entry-card {
   position: relative;
-  margin: 2px 4px;
-  padding: 6px 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
   overflow: hidden;
-  min-height: 28px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  background: var(--entry-color);
-}
-
-.time-entry-block.ai-generated {
   background: linear-gradient(135deg, var(--entry-color) 0%, color-mix(in srgb, var(--entry-color), #1a1a2e 25%) 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.time-entry-block.ai-generated:hover {
+.ai-entry-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 20px color-mix(in srgb, var(--entry-color), transparent 60%);
-  transform: translateX(2px);
+  transform: translateY(-1px);
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-.time-entry-block.confirmed {
+.ai-entry-card.confirmed {
   border-left: 3px solid rgba(255, 255, 255, 0.5);
 }
 
-.time-entry-block.draft {
+.ai-entry-card.draft {
   opacity: 0.9;
   border: 1px dashed rgba(255, 255, 255, 0.35);
   background: linear-gradient(135deg,
     color-mix(in srgb, var(--entry-color), transparent 20%) 0%,
     color-mix(in srgb, var(--entry-color), #1a1a2e 40%) 100%
   );
+}
+
+.ai-entry-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ai-entry-client {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-entry-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ai-entry-duration {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-entry-desc {
+  font-size: 11px;
+  opacity: 0.8;
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+}
+
+.ai-entry-status {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fbbf24;
 }
 
 .ai-shimmer {
