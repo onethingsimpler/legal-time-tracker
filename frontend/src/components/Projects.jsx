@@ -1,18 +1,13 @@
 import React, { useMemo } from 'react'
 import { Plus, Download } from 'lucide-react'
 
-const DEFAULT_COLORS = [
-  '#22c55e', '#f97316', '#ec4899', '#8b5cf6',
-  '#3b82f6', '#14b8a6', '#f59e0b', '#ef4444',
-]
-
 function formatDuration(minutes) {
   if (!minutes && minutes !== 0) return '0m'
   const m = Math.round(minutes)
-  if (m < 60) return `${m} min`
+  if (m < 60) return `${m}min`
   const h = Math.floor(m / 60)
   const rem = m % 60
-  return rem > 0 ? `${h}h ${rem}min` : `${h}h`
+  return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
 
 function computeEntryDuration(entry) {
@@ -53,55 +48,35 @@ export default function Projects({ clients, entries, onAddClient, onEditClient, 
   }, [clients, clientTimes])
 
   return (
-    <div className="column projects">
-      <div className="column-header">
-        <div className="column-title">Projects</div>
-        <div className="column-subtitle">Clients &amp; matters</div>
+    <div className="projects-bar">
+      <div className="projects-bar-clients">
+        {sortedClients.map((client, idx) => {
+          const time = clientTimes[client.id] || 0
+          return (
+            <div
+              key={client.id}
+              className="projects-bar-item"
+              onClick={() => onEditClient(client)}
+            >
+              <span className="projects-bar-dot" style={{ backgroundColor: client.color }} />
+              <span className="projects-bar-name">{client.name}</span>
+              <span className="projects-bar-time">{formatDuration(time)}</span>
+            </div>
+          )
+        })}
       </div>
 
-      <div className="column-body">
-        {sortedClients.length === 0 ? (
-          <div className="no-projects">
-            No clients yet. Add one to get started.
-          </div>
-        ) : (
-          <ul className="project-list">
-            {sortedClients.map((client, idx) => {
-              const color = client.color || DEFAULT_COLORS[idx % DEFAULT_COLORS.length]
-              const time = clientTimes[client.id] || 0
-              return (
-                <li
-                  key={client.id}
-                  className="project-item"
-                  onClick={() => onEditClient(client)}
-                >
-                  <span
-                    className="project-color-dot"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="project-name">{client.name}</span>
-                  <span className="project-time">{formatDuration(time)}</span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
-
-      {totalMinutes > 0 && (
-        <div className="project-total">
-          <span className="project-total-label">Total</span>
-          <span className="project-total-time">{formatDuration(totalMinutes)}</span>
+      <div className="projects-bar-right">
+        <div className="projects-bar-total">
+          <span className="projects-bar-total-label">Total</span>
+          <span className="projects-bar-total-time">{formatDuration(totalMinutes)}</span>
         </div>
-      )}
-
-      <div className="project-actions">
-        <button className="btn btn-secondary" onClick={onAddClient}>
-          <Plus size={14} />
+        <button className="btn btn-secondary btn-sm" onClick={onAddClient}>
+          <Plus size={12} />
           Add Client
         </button>
-        <button className="btn btn-primary" onClick={onExport}>
-          <Download size={14} />
+        <button className="btn btn-primary btn-sm" onClick={onExport}>
+          <Download size={12} />
           Export
         </button>
       </div>

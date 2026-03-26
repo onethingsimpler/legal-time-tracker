@@ -234,6 +234,15 @@ export default function App() {
         onSyncAll={handleSyncAll}
         syncing={syncing}
         aiActive={aiActive}
+        onNewEntry={() => handleCreateEntry()}
+      />
+
+      <Projects
+        clients={clients}
+        entries={entries}
+        onAddClient={() => setClientModal({ open: true, client: null })}
+        onEditClient={(client) => setClientModal({ open: true, client })}
+        onExport={handleExport}
       />
 
       <div className="app-content">
@@ -295,14 +304,6 @@ export default function App() {
           clients={clients}
           onEditEntry={handleEditEntry}
           onCreateEntry={handleCreateEntry}
-        />
-
-        <Projects
-          clients={clients}
-          entries={entries}
-          onAddClient={() => setClientModal({ open: true, client: null })}
-          onEditClient={(client) => setClientModal({ open: true, client })}
-          onExport={handleExport}
         />
       </div>
 

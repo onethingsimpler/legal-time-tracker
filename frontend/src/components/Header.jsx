@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Sparkles,
   Loader2,
+  Plus,
 } from 'lucide-react'
 import { api } from '../api'
 
@@ -18,6 +19,7 @@ export default function Header({
   onSyncAll,
   syncing,
   aiActive,
+  onNewEntry,
 }) {
   const [trackerRunning, setTrackerRunning] = useState(false)
   const [trackerLoading, setTrackerLoading] = useState(false)
@@ -104,6 +106,11 @@ export default function Header({
       </div>
 
       <div className="header-right">
+        <button className="btn btn-primary" onClick={onNewEntry} title="New time entry">
+          <Plus size={14} />
+          New Entry
+        </button>
+
         <button
           className="tracker-status"
           onClick={toggleTracker}
