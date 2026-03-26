@@ -10,42 +10,32 @@ function formatDuration(minutes) {
   return rem > 0 ? `${h}h ${rem}m` : `${h}h`
 }
 
-const SLOT = 30 // 30-min grid
-const ROW_HEIGHT = 56
+// Timeline constants
+const DAY_START = 6 * 60    // 6:00 AM in minutes
+const DAY_END = 22 * 60     // 10:00 PM
+const SLOT = 30             // 30-min grid
+const PX_PER_MIN = 2        // pixels per minute
+const ROW_HEIGHT = SLOT * PX_PER_MIN  // 60px per 30-min row
 
-function generateTimeSlots() {
+function minuteOfDay(dateStr) {
+  const d = new Date(dateStr)
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function generateGridSlots() {
   const slots = []
-  for (let hour = 6; hour < 22; hour++) {
-    for (let min = 0; min < 60; min += SLOT) {
-      const h = hour % 12 || 12
-      const ampm = hour < 12 ? 'AM' : 'PM'
-      const minStr = String(min).padStart(2, '0')
-      slots.push({
-        label: `${h}:${minStr} ${ampm}`,
-        key: `${hour}:${minStr}`,
-        minutes: hour * 60 + min,
-      })
-    }
+  for (let m = DAY_START; m < DAY_END; m += SLOT) {
+    const hour = Math.floor(m / 60)
+    const min = m % 60
+    const h = hour % 12 || 12
+    const ampm = hour < 12 ? 'AM' : 'PM'
+    slots.push({ label: `${h}:${String(min).padStart(2, '0')} ${ampm}`, minutes: m })
   }
   return slots
 }
 
-const TIME_SLOTS = generateTimeSlots()
-
-function getSlotKey(activity) {
-  if (!activity.start_time) return null
-  const d = new Date(activity.start_time)
-  const hour = d.getHours()
-  const minute = Math.floor(d.getMinutes() / SLOT) * SLOT
-  return `${hour}:${String(minute).padStart(2, '0')}`
-}
-
-function getDuration(activity) {
-  if (activity.start_time && activity.end_time) {
-    return Math.round((new Date(activity.end_time) - new Date(activity.start_time)) / 60000)
-  }
-  return null
-}
+const GRID_SLOTS = generateGridSlots()
+const TOTAL_HEIGHT = ((DAY_END - DAY_START) * PX_PER_MIN)
 
 export default function ActivityColumn({
   title, subtitle, icon, filterTypes, emptyIcon, emptyMessage,
@@ -66,27 +56,18 @@ export default function ActivityColumn({
     return map
   }, [clients])
 
-  const bySlot = useMemo(() => {
-    const map = {}
-    filteredActivities.forEach(act => {
-      const key = getSlotKey(act)
-      if (key) { if (!map[key]) map[key] = []; map[key].push(act) }
-    })
-    return map
-  }, [filteredActivities])
-
-  function handleClick(e, act) {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setPopupPosition({ top: rect.top, left: rect.right + 8 })
-    setSelectedActivity(act)
-  }
-
   function getMatchedColor(act) {
     if (act.client_links?.length > 0) {
       const c = clientMap[act.client_links[0].client_id]
       if (c) return c.color
     }
     return null
+  }
+
+  function handleClick(e, act) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setPopupPosition({ top: rect.top, left: rect.right + 8 })
+    setSelectedActivity(act)
   }
 
   return (
@@ -106,38 +87,50 @@ export default function ActivityColumn({
             <div className="no-activities-text">{emptyMessage || 'No data yet'}</div>
           </div>
         ) : (
-          <div className="timeline">
-            {TIME_SLOTS.map(slot => {
-              const acts = bySlot[slot.key] || []
-              return (
-                <div key={slot.key} className="tl-row" style={{ minHeight: ROW_HEIGHT }}>
-                  <div className="tl-time">{slot.label}</div>
-                  <div className="tl-content">
-                    {acts.map((act, idx) => {
-                      const matched = getMatchedColor(act)
-                      const dur = getDuration(act)
-                      const assignedBy = act.client_links?.[0]?.matched_by
-                      const isAi = assignedBy && assignedBy !== 'manual'
-                      const isEmail = act.activity_type === 'email'
-                      const emailDir = isEmail ? (act.window_title?.startsWith('Re:') || act.window_title?.startsWith('FW:') ? 'in' : 'out') : null
+          <div className="gcal-timeline" style={{ height: TOTAL_HEIGHT }}>
+            {/* 30-min grid lines */}
+            {GRID_SLOTS.map(slot => (
+              <div
+                key={slot.minutes}
+                className="gcal-gridline"
+                style={{ top: (slot.minutes - DAY_START) * PX_PER_MIN }}
+              >
+                <span className="gcal-label">{slot.label}</span>
+              </div>
+            ))}
 
-                      return (
-                        <div
-                          key={act.id || idx}
-                          className={`tl-card ${matched ? '' : 'unmatched'}`}
-                          data-type={act.activity_type}
-                          onClick={e => handleClick(e, act)}
-                        >
-                          {isAi && <span className="tl-ai">{'\u2728'}</span>}
-                          <span className="tl-desc">
-                            {isEmail && <span className={`email-dir ${emailDir}`}>{emailDir === 'in' ? '\u2B07' : '\u2B06'}</span>}
-                            {act.window_title || 'Unknown'}
-                          </span>
-                          {dur != null && <span className="tl-dur">{formatDuration(dur)}</span>}
-                        </div>
-                      )
-                    })}
+            {/* Activities */}
+            {filteredActivities.map((act, idx) => {
+              if (!act.start_time || !act.end_time) return null
+              const startMin = minuteOfDay(act.start_time)
+              const endMin = minuteOfDay(act.end_time)
+              if (startMin < DAY_START || startMin >= DAY_END) return null
+
+              const top = (startMin - DAY_START) * PX_PER_MIN
+              const height = Math.max((endMin - startMin) * PX_PER_MIN, 22)
+              const dur = endMin - startMin
+              const matched = getMatchedColor(act)
+              const assignedBy = act.client_links?.[0]?.matched_by
+              const isAi = assignedBy && assignedBy !== 'manual'
+              const isEmail = act.activity_type === 'email'
+              const emailDir = isEmail ? (act.window_title?.startsWith('Re:') || act.window_title?.startsWith('FW:') ? 'in' : 'out') : null
+              const isShort = height < 36
+
+              return (
+                <div
+                  key={act.id || idx}
+                  className={`gcal-event ${matched ? '' : 'unmatched'}`}
+                  data-type={act.activity_type}
+                  style={{ top, height }}
+                  onClick={e => handleClick(e, act)}
+                >
+                  {isAi && <span className="gcal-ai">{'\u2728'}</span>}
+                  <div className="gcal-event-text">
+                    {isEmail && <span className={`email-dir ${emailDir}`}>{emailDir === 'in' ? '\u2B07' : '\u2B06'}</span>}
+                    {act.window_title || 'Unknown'}
                   </div>
+                  {!isShort && <div className="gcal-event-dur">{formatDuration(dur)}</div>}
+                  {isShort && <span className="gcal-event-dur-inline">{formatDuration(dur)}</span>}
                 </div>
               )
             })}
