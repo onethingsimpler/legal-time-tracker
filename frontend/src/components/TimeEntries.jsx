@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { clientColor } from '../clientColor'
 
 function formatDuration(seconds) {
   if (!seconds) return '0m'
@@ -49,12 +50,13 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
 
     const enriched = Object.entries(byClient).map(([cidStr, data]) => {
       const cid = Number(cidStr)
-      const client = clientMap[cid]
+      const client = clientMap[cid] || data.activities[0]?.client_links?.[0]?.client
       const aiEntry = entryByClient[cid]
       return {
         client_id: cid,
         clientName: client?.name || 'Unknown',
-        clientColor: client?.color || '#94a3b8',
+        clientColor: clientColor(cid),
+        billable: client?.billable !== false,
         duration_seconds: data.duration_seconds,
         description: aiEntry?.description || '',
         source: aiEntry?.source || 'manual',
@@ -101,6 +103,7 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
                     <div className="ai-entry-top">
                       <div className="ai-entry-client">
                         {entry.clientName}
+                        {!entry.billable && <span className="ai-entry-nb" title="Non-billable">NB</span>}
                       </div>
                       <div className="ai-entry-time">
                         <span className="ai-entry-duration">{formatDuration(entry.duration_seconds)}</span>
@@ -144,7 +147,7 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
                               <div className="unassigned-client-list">
                                 {filtered.map(c => (
                                   <div key={c.id} className="unassigned-client-option" onClick={() => { onAssign(act.id, c.id); setAssigningId(null); setSearch('') }}>
-                                    <span className="unassigned-client-dot" style={{ backgroundColor: c.color }} />
+                                    <span className="unassigned-client-dot" style={{ backgroundColor: clientColor(c.id) }} />
                                     {c.name}
                                   </div>
                                 ))}

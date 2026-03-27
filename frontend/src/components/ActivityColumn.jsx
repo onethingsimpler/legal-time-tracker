@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { clientColor } from '../clientColor'
 import ActivityDetail from './ActivityDetail'
 
 function formatDuration(minutes) {
@@ -89,7 +90,7 @@ export default function ActivityColumn({
 
   function getMatchedColor(act) {
     const link = act.client_links?.[0]
-    return link ? clientMap[link.client_id]?.color : null
+    return link ? clientColor(link.client_id) : null
   }
 
   function handleClick(e, act) {

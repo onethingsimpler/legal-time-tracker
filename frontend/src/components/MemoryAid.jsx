@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { clientColor } from '../clientColor'
 import ActivityDetail from './ActivityDetail'
 
 const APP_ICONS = {
@@ -123,7 +124,7 @@ export default function MemoryAid({ activities, zoom, clients, onCreateEntry }) 
 
   function getMatchedColor(activity) {
     if (activity.matched_client_id && clientMap[activity.matched_client_id]) {
-      return clientMap[activity.matched_client_id].color
+      return clientColor(activity.matched_client_id)
     }
     return null
   }

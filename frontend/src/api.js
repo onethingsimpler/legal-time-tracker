@@ -18,11 +18,11 @@ function between(rand, min, max) { return min + Math.floor(rand() * (max - min +
 
 // ── Clients ───────────────────────────────────────────────────
 const CLIENTS = [
-  { id: 1, name: 'Morgan Ltd.', color: '#3B82F6', keywords: ['morgan'], created_at: new Date().toISOString() },
-  { id: 2, name: 'Axion Ltd.', color: '#EF4444', keywords: ['axion'], created_at: new Date().toISOString() },
-  { id: 3, name: 'Harper & Associates', color: '#10B981', keywords: ['harper'], created_at: new Date().toISOString() },
-  { id: 4, name: 'AcmeCorp', color: '#F59E0B', keywords: ['acme'], created_at: new Date().toISOString() },
-  { id: 5, name: 'Daven Ltd.', color: '#8B5CF6', keywords: ['daven'], created_at: new Date().toISOString() },
+  { id: 1, name: 'Morgan Ltd.', description: 'Corporate client. Key contact: Sarah Chen (General Counsel). Matters include service agreements, board resolutions, subsidiary merger, and restructuring.', billable: true, created_at: new Date().toISOString() },
+  { id: 2, name: 'Axion Ltd.', description: 'IP and technology client. Key contact: Robert Kim (VP Legal). Matters include patent infringement claims, software licensing, and patent portfolio management.', billable: true, created_at: new Date().toISOString() },
+  { id: 3, name: 'Harper & Associates', description: 'Employment law client. Key contact: James Harper. Matters include executive employment agreements, non-compete provisions, real estate due diligence, and office leases.', billable: true, created_at: new Date().toISOString() },
+  { id: 4, name: 'AcmeCorp', description: 'Regulatory compliance client. Matters include SEC compliance, quarterly billing, audit preparation, and regulatory checklists.', billable: true, created_at: new Date().toISOString() },
+  { id: 5, name: 'Daven Ltd.', description: 'Litigation client. Key contact: John Daven. Matters include vendor performance disputes, discovery responses, and litigation strategy. Opposing counsel: Richards & Webb LLP.', billable: true, created_at: new Date().toISOString() },
 ]
 
 function cl(id) { return CLIENTS.find(c => c.id === id) || null }
@@ -278,7 +278,7 @@ export const api = {
     return ok({ activities: day.activities, total_activities: day.activities.length })
   },
   getClients() { return ok(CLIENTS) },
-  createClient(data) { const c = { ...data, id: Date.now(), created_at: new Date().toISOString(), keywords: data.keywords || [] }; CLIENTS.push(c); return ok(c) },
+  createClient(data) { const c = { ...data, id: Date.now(), created_at: new Date().toISOString(), description: data.description || '', billable: data.billable !== false }; CLIENTS.push(c); return ok(c) },
   updateClient(id, data) { const c = CLIENTS.find(c => c.id === id); if (c) Object.assign(c, data); return ok(c) },
   deleteClient(id) { const i = CLIENTS.findIndex(c => c.id === id); if (i >= 0) CLIENTS.splice(i, 1); return ok({}) },
   getTimeEntries(dateStr) {

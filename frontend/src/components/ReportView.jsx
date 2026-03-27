@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronRight } from 'lucide-react'
 import { api } from '../api'
+import { clientColor } from '../clientColor'
 
 function formatDuration(totalSeconds) {
   if (!totalSeconds) return '0m'
@@ -18,6 +19,16 @@ function displayDate(isoStr) {
   if (!isoStr) return ''
   const [y, m, d] = isoStr.split('-')
   return `${m}/${d}/${y}`
+}
+
+function formatTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const h = d.getHours()
+  const m = d.getMinutes()
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
 }
 
 function getMonday(d) {
@@ -59,6 +70,15 @@ function getPresetRange(preset) {
   return { start: getMonday(today), end: getFriday(today) }
 }
 
+const TYPE_LABELS = {
+  document: 'Document',
+  browser: 'Browser',
+  app: 'App',
+  calendar: 'Meeting',
+  call: 'Call',
+  email: 'Email',
+}
+
 export default function ReportView({ onClose, clients }) {
   const defaultRange = getPresetRange('this-week')
   const [startDate, setStartDate] = useState(formatDateStr(defaultRange.start))
@@ -66,6 +86,7 @@ export default function ReportView({ onClose, clients }) {
   const [activePreset, setActivePreset] = useState('this-week')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [expandedClient, setExpandedClient] = useState(null)
 
   const clientMap = useMemo(() => {
     const map = {}
@@ -77,10 +98,12 @@ export default function ReportView({ onClose, clients }) {
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
+    setExpandedClient(null)
     try {
       const start = new Date(startDate + 'T00:00:00')
       const end = new Date(endDate + 'T00:00:00')
       const clientTotals = {}
+      const clientActivities = {}
       let totalSeconds = 0
       let totalActivities = 0
 
@@ -103,15 +126,23 @@ export default function ReportView({ onClose, clients }) {
               clientTotals[clientId].count += 1
               totalSeconds += dur
               totalActivities += 1
+
+              if (!clientActivities[clientId]) {
+                clientActivities[clientId] = []
+              }
+              clientActivities[clientId].push({
+                ...act,
+                _date: dateStr,
+              })
             }
           }
         }
         current.setDate(current.getDate() + 1)
       }
 
-      setData({ clientTotals, totalSeconds, totalActivities })
+      setData({ clientTotals, clientActivities, totalSeconds, totalActivities })
     } catch {
-      setData({ clientTotals: {}, totalSeconds: 0, totalActivities: 0 })
+      setData({ clientTotals: {}, clientActivities: {}, totalSeconds: 0, totalActivities: 0 })
     } finally {
       setLoading(false)
     }
@@ -138,6 +169,10 @@ export default function ReportView({ onClose, clients }) {
     setActivePreset(null)
   }
 
+  function toggleClient(clientId) {
+    setExpandedClient(prev => prev === clientId ? null : clientId)
+  }
+
   const sortedClients = useMemo(() => {
     if (!data) return []
     return Object.entries(data.clientTotals)
@@ -148,6 +183,20 @@ export default function ReportView({ onClose, clients }) {
         ...totals,
       }))
   }, [data, clientMap])
+
+  const billableTotalSeconds = useMemo(() => {
+    if (!sortedClients.length) return 0
+    return sortedClients
+      .filter(row => row.client?.billable !== false)
+      .reduce((sum, row) => sum + row.seconds, 0)
+  }, [sortedClients])
+
+  const billableTotalActivities = useMemo(() => {
+    if (!sortedClients.length) return 0
+    return sortedClients
+      .filter(row => row.client?.billable !== false)
+      .reduce((sum, row) => sum + row.count, 0)
+  }, [sortedClients])
 
   const presets = [
     { id: 'this-week', label: 'This Week' },
@@ -214,21 +263,69 @@ export default function ReportView({ onClose, clients }) {
                 </tr>
               </thead>
               <tbody>
-                {sortedClients.map(row => (
-                  <tr key={row.clientId} className="report-row">
-                    <td className="report-td report-td-client">
-                      <span
-                        className="report-client-dot"
-                        style={{ background: row.client?.color || '#94a3b8' }}
-                      />
-                      {row.client?.name || `Client #${row.clientId}`}
-                    </td>
-                    <td className="report-td report-td-hours">{formatDuration(row.seconds)}</td>
-                    <td className="report-td report-td-count">{row.count}</td>
-                  </tr>
-                ))}
+                {sortedClients.map(row => {
+                  const isNonBillable = row.client?.billable === false
+                  const isExpanded = expandedClient === row.clientId
+                  const activities = data.clientActivities?.[row.clientId] || []
+
+                  return (
+                    <React.Fragment key={row.clientId}>
+                      <tr
+                        className={`report-row report-row-clickable${isNonBillable ? ' report-row-nonbillable' : ''}`}
+                        onClick={() => toggleClient(row.clientId)}
+                      >
+                        <td className="report-td report-td-client">
+                          <span className="report-expand-icon">
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </span>
+                          <span
+                            className="report-client-dot"
+                            style={{ background: clientColor(row.clientId) }}
+                          />
+                          {row.client?.name || `Client #${row.clientId}`}
+                          {isNonBillable && (
+                            <span className="report-nonbillable-badge">Non-billable</span>
+                          )}
+                        </td>
+                        <td className="report-td report-td-hours">{formatDuration(row.seconds)}</td>
+                        <td className="report-td report-td-count">{row.count}</td>
+                      </tr>
+                      {isExpanded && activities.length > 0 && (
+                        <tr className="report-activities-row">
+                          <td colSpan={3} className="report-activities-cell">
+                            <div className="report-activities-list">
+                              {activities.map(act => (
+                                <div key={`${act._date}-${act.id}`} className="report-activity-item">
+                                  <span className="report-activity-type">
+                                    {TYPE_LABELS[act.activity_type] || act.activity_type}
+                                  </span>
+                                  <span className="report-activity-title">{act.window_title || act.app_name}</span>
+                                  <span className="report-activity-time">
+                                    {formatTime(act.start_time)} &ndash; {formatTime(act.end_time)}
+                                  </span>
+                                  <span className="report-activity-dur">{formatDuration(act.duration_seconds)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
               </tbody>
               <tfoot>
+                {sortedClients.some(r => r.client?.billable === false) && (
+                  <tr className="report-billable-row">
+                    <td className="report-td report-td-client report-total-label">Billable Total</td>
+                    <td className="report-td report-td-hours report-total-value">
+                      {formatDuration(billableTotalSeconds)}
+                    </td>
+                    <td className="report-td report-td-count report-total-value">
+                      {billableTotalActivities}
+                    </td>
+                  </tr>
+                )}
                 <tr className="report-total-row">
                   <td className="report-td report-td-client report-total-label">Total</td>
                   <td className="report-td report-td-hours report-total-value">

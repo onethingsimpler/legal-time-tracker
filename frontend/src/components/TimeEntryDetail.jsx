@@ -1,5 +1,6 @@
 import React from 'react'
 import { X } from 'lucide-react'
+import { clientColor } from '../clientColor'
 
 function formatTime(d) {
   return d ? new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
@@ -37,7 +38,7 @@ export default function TimeEntryDetail({ entry, activities, onClose, onUnassign
           <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
               width: 12, height: 12, borderRadius: '50%',
-              backgroundColor: entry.clientColor || '#94a3b8',
+              backgroundColor: entry.clientColor || clientColor(entry.client_id),
               flexShrink: 0,
             }} />
             {entry.clientName}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { X, Clock } from 'lucide-react'
+import { clientColor } from '../clientColor'
 
 const DEFAULT_COLORS = [
   '#22c55e', '#f97316', '#ec4899', '#8b5cf6',
@@ -243,7 +244,7 @@ export default function TimeEntryModal({
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    backgroundColor: selectedClient.color || DEFAULT_COLORS[0],
+                    backgroundColor: clientColor(selectedClient.id),
                     marginLeft: 8,
                     verticalAlign: 0,
                   }}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { clientColor } from '../clientColor'
 
 const ICONS = {
   document: '\u{1F4C4}', email: '\u{1F4E7}', call: '\u{1F4DE}',
@@ -110,7 +111,7 @@ export default function ActivityDetail({ activity, position, clients, onClose, o
           <div className="activity-popup-assign">
             {!changing && matched ? (
               <div className="activity-popup-assigned">
-                <span className="activity-popup-assign-dot" style={{ backgroundColor: matched.color }} />
+                <span className="activity-popup-assign-dot" style={{ backgroundColor: clientColor(matched.id) }} />
                 <span className="activity-popup-match-name">{matched.name}</span>
                 <button className="activity-popup-change-btn" onClick={() => setChanging(true)}>Change</button>
               </div>
@@ -127,7 +128,7 @@ export default function ActivityDetail({ activity, position, clients, onClose, o
                 <div className="activity-popup-client-list">
                   {filtered.map(c => (
                     <div key={c.id} className="activity-popup-assign-option" onClick={() => handlePick(c.id)}>
-                      <span className="activity-popup-assign-dot" style={{ backgroundColor: c.color }} />
+                      <span className="activity-popup-assign-dot" style={{ backgroundColor: clientColor(c.id) }} />
                       <span>{c.name}</span>
                     </div>
                   ))}

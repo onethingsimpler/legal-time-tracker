@@ -9,6 +9,7 @@ import AddClientModal from './components/AddClientModal'
 import TimeEntryModal from './components/TimeEntryModal'
 import TimeEntryDetail from './components/TimeEntryDetail'
 import ReportView from './components/ReportView'
+import ManageClients from './components/ManageClients'
 
 export default function App() {
   // Core state
@@ -28,8 +29,9 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [matching, setMatching] = useState(false)
 
-  // Report state
+  // Report & manage clients state
   const [showReport, setShowReport] = useState(false)
+  const [showManageClients, setShowManageClients] = useState(false)
 
   // Modal state
   const [clientModal, setClientModal] = useState({ open: false, client: null })
@@ -253,10 +255,7 @@ export default function App() {
       />
 
       <Projects
-        clients={clients}
-        entries={entries}
-        onAddClient={() => setClientModal({ open: true, client: null })}
-        onEditClient={(client) => setClientModal({ open: true, client })}
+        onManageClients={() => setShowManageClients(true)}
         onExport={handleExport}
         onReport={() => setShowReport(true)}
       />
@@ -371,6 +370,25 @@ export default function App() {
             handleUnassignActivity(activityId)
             addToast('Activity unassigned', 'success')
           }}
+        />
+      )}
+
+      {showManageClients && (
+        <ManageClients
+          clients={clients}
+          onAdd={() => {
+            setShowManageClients(false)
+            setClientModal({ open: true, client: null })
+          }}
+          onEdit={(client) => {
+            setShowManageClients(false)
+            setClientModal({ open: true, client })
+          }}
+          onDelete={(id) => {
+            handleDeleteClient(id)
+            setShowManageClients(false)
+          }}
+          onClose={() => setShowManageClients(false)}
         />
       )}
 

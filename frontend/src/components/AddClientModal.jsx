@@ -1,28 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
-const COLOR_OPTIONS = [
-  '#22c55e', '#f97316', '#ec4899', '#8b5cf6',
-  '#3b82f6', '#14b8a6', '#f59e0b', '#ef4444',
-  '#06b6d4', '#84cc16', '#a855f7', '#f43f5e',
-]
-
 export default function AddClientModal({ client, onSave, onDelete, onClose }) {
   const isEditing = !!client?.id
   const [name, setName] = useState('')
-  const [color, setColor] = useState(COLOR_OPTIONS[0])
-  const [keywords, setKeywords] = useState('')
+  const [description, setDescription] = useState('')
+  const [billable, setBillable] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (client) {
       setName(client.name || '')
-      setColor(client.color || COLOR_OPTIONS[0])
-      setKeywords(
-        Array.isArray(client.keywords)
-          ? client.keywords.join(', ')
-          : client.keywords || ''
-      )
+      setDescription(client.description || '')
+      setBillable(client.billable !== false)
     }
   }, [client])
 
@@ -34,11 +24,8 @@ export default function AddClientModal({ client, onSave, onDelete, onClose }) {
     try {
       const data = {
         name: name.trim(),
-        color,
-        keywords: keywords
-          .split(',')
-          .map((k) => k.trim())
-          .filter(Boolean),
+        description: description.trim(),
+        billable,
       }
 
       if (isEditing) {
@@ -95,31 +82,32 @@ export default function AddClientModal({ client, onSave, onDelete, onClose }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Color</label>
-              <div className="color-picker-group">
-                {COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`color-swatch ${color === c ? 'selected' : ''}`}
-                    style={{ backgroundColor: c }}
-                    onClick={() => setColor(c)}
-                  />
-                ))}
+              <label className="form-label">AI Description</label>
+              <textarea
+                className="form-input"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g., Real estate client, involved in commercial property acquisitions in Manhattan. Key contacts: John Smith (partner), Jane Doe (in-house counsel)."
+                rows={3}
+                style={{ resize: 'vertical' }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Describe the client so AI can match activities automatically
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Keywords (comma separated)</label>
-              <input
-                className="form-input"
-                type="text"
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder="e.g., smith, merger, acquisition"
-              />
+              <label className="form-label-inline" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!billable}
+                  onChange={(e) => setBillable(!e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Non-billable</span>
+              </label>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                Used for AI matching of activities to this client
+                Mark for internal, admin, or pro-bono work that should not be billed
               </div>
             </div>
           </div>
