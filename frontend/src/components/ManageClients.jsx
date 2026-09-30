@@ -56,9 +56,6 @@ export default function ManageClients({ clients, onAdd, onEdit, onDelete, onClos
                   <div className="mc-info">
                     <div className="mc-name">
                       {c.name}
-                      {c.billable === false && (
-                        <span className="mc-nb-badge">Non-billable</span>
-                      )}
                     </div>
                     {c.description && (
                       <div className="mc-description">{c.description}</div>

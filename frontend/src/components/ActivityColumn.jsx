@@ -60,9 +60,10 @@ export function TimeGutter({ startHour = 9, endHour = 19 }) {
 export default function ActivityColumn({
   title, subtitle, icon, filterTypes, emptyIcon, emptyMessage,
   activities, zoom, clients, onCreateEntry, onAssign, onUpdateTime,
+  onSplit, onToggleBillable, onSetMatter, onAddMatter,
   startHour = 9, endHour = 19,
 }) {
-  const [selectedActivity, setSelectedActivity] = useState(null)
+  const [selectedActivityId, setSelectedActivityId] = useState(null)
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 })
 
   const totalHeight = (endHour - startHour) * HOUR_HEIGHT
@@ -93,10 +94,14 @@ export default function ActivityColumn({
     return link ? clientColor(link.client_id) : null
   }
 
+  const selectedActivity = selectedActivityId
+    ? (activities || []).find(a => a.id === selectedActivityId) || null
+    : null
+
   function handleClick(e, act) {
     const rect = e.currentTarget.getBoundingClientRect()
     setPopupPosition({ top: rect.top, left: rect.right + 8 })
-    setSelectedActivity(act)
+    setSelectedActivityId(act.id)
   }
 
   return (
@@ -156,9 +161,13 @@ export default function ActivityColumn({
           activity={selectedActivity}
           position={popupPosition}
           clients={clients}
-          onClose={() => setSelectedActivity(null)}
+          onClose={() => setSelectedActivityId(null)}
           onAssign={onAssign}
           onUpdateTime={onUpdateTime}
+          onSplit={onSplit}
+          onToggleBillable={onToggleBillable}
+          onSetMatter={onSetMatter}
+          onAddMatter={onAddMatter}
         />
       )}
     </div>

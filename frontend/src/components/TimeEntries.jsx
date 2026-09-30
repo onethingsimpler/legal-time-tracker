@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { Clock, AlertCircle } from 'lucide-react'
 import { clientColor } from '../clientColor'
 
 function formatDuration(seconds) {
@@ -39,8 +40,10 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
         return
       }
       const cid = a.client_links[0].client_id
-      if (!byClient[cid]) byClient[cid] = { duration_seconds: 0, activities: [] }
-      byClient[cid].duration_seconds += (a.duration_seconds || 0)
+      if (!byClient[cid]) byClient[cid] = { duration_seconds: 0, nb_seconds: 0, activities: [] }
+      const dur = a.duration_seconds || 0
+      byClient[cid].duration_seconds += dur
+      if (a.billable === false) byClient[cid].nb_seconds += dur
       byClient[cid].activities.push(a)
     })
 
@@ -52,19 +55,21 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
       const cid = Number(cidStr)
       const client = clientMap[cid] || data.activities[0]?.client_links?.[0]?.client
       const aiEntry = entryByClient[cid]
+      const billableSeconds = data.duration_seconds - data.nb_seconds
       return {
         client_id: cid,
         clientName: client?.name || 'Unknown',
         clientColor: clientColor(cid),
-        billable: client?.billable !== false,
         duration_seconds: data.duration_seconds,
+        billable_seconds: billableSeconds,
+        has_nb: data.nb_seconds > 0,
         description: aiEntry?.description || '',
         source: aiEntry?.source || 'manual',
         activities: data.activities,
       }
     }).sort((a, b) => b.duration_seconds - a.duration_seconds)
 
-    const totalSeconds = enriched.reduce((sum, e) => sum + e.duration_seconds, 0)
+    const totalSeconds = enriched.reduce((sum, e) => sum + e.billable_seconds, 0)
 
     return { enriched, unassigned, totalSeconds }
   }, [activities, entries, clientMap])
@@ -73,8 +78,9 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
     <div className="column ai-column">
       <div className="column-header ai-header">
         <div className="ai-header-top">
-          <div>
-            <div className="column-title">Totals</div>
+          <div className="ai-header-label">
+            <Clock size={16} />
+            <span className="column-title">TOTALS</span>
           </div>
           <div className="ai-total">
             <div className="ai-total-time">{formatDuration(totalSeconds)}</div>
@@ -85,30 +91,31 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
       <div className="column-body ai-entries-body">
         {enriched.length === 0 && unassigned.length === 0 ? (
           <div className="ai-empty">
-            <span className="ai-empty-icon">{'\u2728'}</span>
+            <Clock size={24} />
             <span>No entries yet</span>
           </div>
         ) : (
           <>
             <div className="ai-entries-list">
               {enriched.map((entry) => {
-                const isAi = entry.source === 'ai_suggested'
-
                 return (
                   <div
                     key={entry.client_id}
                     className="ai-entry-card"
+                    style={{ borderLeftColor: entry.clientColor }}
                     onClick={() => onEditEntry(entry)}
                   >
                     <div className="ai-entry-top">
                       <div className="ai-entry-client">
                         {entry.clientName}
-                        {!entry.billable && <span className="ai-entry-nb" title="Non-billable">NB</span>}
                       </div>
                       <div className="ai-entry-time">
-                        <span className="ai-entry-duration">{formatDuration(entry.duration_seconds)}</span>
+                        <span className="ai-entry-duration">{formatDuration(entry.billable_seconds)}</span>
                       </div>
                     </div>
+                    {entry.has_nb && (
+                      <div className="ai-entry-nb-line">{formatDuration(entry.duration_seconds - entry.billable_seconds)} non billable</div>
+                    )}
                     <div className="ai-entry-desc">{entry.description}</div>
                   </div>
                 )
@@ -118,7 +125,7 @@ export default function TimeEntries({ entries, clients, activities, onEditEntry,
             {unassigned.length > 0 && (
               <div className="unassigned-box">
                 <div className="unassigned-box-header" onClick={() => { setShowUnassigned(!showUnassigned); setAssigningId(null); setSearch('') }}>
-                  <span className="unassigned-box-dot" />
+                  <AlertCircle size={14} className="unassigned-box-icon" />
                   <span className="unassigned-box-text">{unassigned.length} unassigned {unassigned.length === 1 ? 'activity' : 'activities'}</span>
                   <span className="unassigned-box-arrow">{showUnassigned ? '\u25B2' : '\u25BC'}</span>
                 </div>

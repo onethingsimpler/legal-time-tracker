@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { X, Clock } from 'lucide-react'
 import { clientColor } from '../clientColor'
+import MatterPicker from './MatterPicker'
 
 const DEFAULT_COLORS = [
   '#22c55e', '#f97316', '#ec4899', '#8b5cf6',
@@ -39,6 +40,7 @@ export default function TimeEntryModal({
   onSave,
   onDelete,
   onClose,
+  onAddMatter,
   defaultStartTime,
   defaultEndTime,
 }) {
@@ -46,6 +48,7 @@ export default function TimeEntryModal({
 
   const [category, setCategory] = useState('document')
   const [clientId, setClientId] = useState('')
+  const [billable, setBillable] = useState(true)
   const [matter, setMatter] = useState('')
   const [description, setDescription] = useState('')
   const [entryDate, setEntryDate] = useState('')
@@ -61,6 +64,7 @@ export default function TimeEntryModal({
   useEffect(() => {
     if (entry) {
       setClientId(entry.client_id || '')
+      setBillable(entry.billable !== false)
       setMatter(entry.matter || '')
       setDescription(entry.description || '')
       setEntryDate(entry.start_time ? toDateInput(entry.start_time) : toDateInput(date))
@@ -97,6 +101,7 @@ export default function TimeEntryModal({
       const data = {
         activity_type: category,
         client_id: clientId,
+        billable,
         matter: matter.trim() || undefined,
         description: description.trim() || undefined,
         start_time: buildDateTimeString(new Date(entryDate + 'T00:00:00'), startTime),
@@ -169,7 +174,7 @@ export default function TimeEntryModal({
                   setMatter('')
                 }}
               >
-                <option value="">None (unassigned)</option>
+                <option value="">Select client...</option>
                 {clients?.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -179,15 +184,30 @@ export default function TimeEntryModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Subject</label>
-              <input
-                className="form-input"
-                type="text"
-                value={matter}
-                onChange={(e) => setMatter(e.target.value)}
-                placeholder="e.g., Contract Review #2024-001"
-              />
+              <label className="form-label-inline" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!billable}
+                  onChange={(e) => setBillable(!e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Non billable</span>
+              </label>
             </div>
+
+            {selectedClient && (
+              <div className="form-group">
+                <label className="form-label">Matter</label>
+                <MatterPicker
+                  matters={selectedClient.matters}
+                  value={matter}
+                  onChange={setMatter}
+                  onCreateMatter={(name, number) => onAddMatter(selectedClient.id, name, number)}
+                  clientName={selectedClient.name}
+                  placeholder="Search or create matter..."
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Description</label>

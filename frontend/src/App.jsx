@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
+import { Monitor, CalendarDays, Phone, Mail } from 'lucide-react'
 import { api } from './api'
 import Header from './components/Header'
 import ActivityColumn, { TimeGutter, useTimeRange } from './components/ActivityColumn'
 import TimeEntries from './components/TimeEntries'
-import Projects from './components/Projects'
 import AddClientModal from './components/AddClientModal'
 import TimeEntryModal from './components/TimeEntryModal'
 import TimeEntryDetail from './components/TimeEntryDetail'
 import ReportView from './components/ReportView'
 import ManageClients from './components/ManageClients'
+import SplitModal from './components/SplitModal'
+import Settings from './components/Settings'
 
 export default function App() {
   // Core state
@@ -29,9 +31,12 @@ export default function App() {
   const [syncing, setSyncing] = useState(false)
   const [matching, setMatching] = useState(false)
 
-  // Report & manage clients state
+  // Report, manage clients & settings state
   const [showReport, setShowReport] = useState(false)
   const [showManageClients, setShowManageClients] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [splitActivity, setSplitActivity] = useState(null)
+  const [roundingInterval, setRoundingInterval] = useState(0)
 
   // Modal state
   const [clientModal, setClientModal] = useState({ open: false, client: null })
@@ -41,6 +46,39 @@ export default function App() {
     defaultStartTime: '',
     defaultEndTime: '',
   })
+
+  // Timer state
+  const [timer, setTimer] = useState({ running: false, startTime: null, elapsed: 0 })
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    if (timer.running) {
+      timerRef.current = setInterval(() => {
+        setTimer(prev => ({ ...prev, elapsed: Math.floor((Date.now() - prev.startTime) / 1000) }))
+      }, 1000)
+    } else {
+      clearInterval(timerRef.current)
+    }
+    return () => clearInterval(timerRef.current)
+  }, [timer.running])
+
+  function handleStartTimer() {
+    setTimer({ running: true, startTime: Date.now(), elapsed: 0 })
+  }
+
+  function handleStopTimer() {
+    const startDate = new Date(timer.startTime)
+    const endDate = new Date()
+    const startStr = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
+    const endStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
+    setTimer({ running: false, startTime: null, elapsed: 0 })
+    setEntryModal({
+      open: true,
+      entry: null,
+      defaultStartTime: startStr,
+      defaultEndTime: endStr,
+    })
+  }
 
   // Toasts
   const [toasts, setToasts] = useState([])
@@ -156,15 +194,16 @@ export default function App() {
     }
   }
 
-  // New entry → adds as an activity in the source columns
+  // New entry → adds as an activity in the source columns + entry for billable tracking
   function handleSaveEntry(data) {
     const clientId = data.client_id ? Number(data.client_id) : null
     const client = clientId ? clients.find(c => c.id === clientId) : null
     const durSec = (data.duration_minutes || 0) * 60
+    const actId = Date.now()
 
     const appNames = { call: 'Phone', email: 'Microsoft Outlook', calendar: 'Calendar', document: 'App' }
     const newActivity = {
-      id: Date.now(),
+      id: actId,
       app_name: appNames[data.activity_type] || 'App',
       window_title: data.matter || data.description || 'Manual entry',
       start_time: data.start_time,
@@ -172,9 +211,30 @@ export default function App() {
       duration_seconds: durSec,
       activity_type: data.activity_type || 'document',
       metadata: {},
-      client_links: client ? [{ id: Date.now(), activity_id: Date.now(), client_id: clientId, confidence: 1, matched_by: 'manual', client }] : [],
+      client_links: client ? [{ id: actId, activity_id: actId, client_id: clientId, confidence: 1, matched_by: 'manual', client }] : [],
     }
     setActivities(prev => [...prev, newActivity])
+
+    if (clientId) {
+      setEntries(prev => {
+        const existing = prev.find(e => e.client_id === clientId)
+        if (existing) {
+          return prev.map(e => e.client_id === clientId ? { ...e, billable: data.billable } : e)
+        }
+        return [...prev, {
+          id: actId,
+          client_id: clientId,
+          description: data.description || data.matter || '',
+          start_time: data.start_time,
+          end_time: data.end_time,
+          duration_seconds: durSec,
+          billable: data.billable,
+          source: 'manual',
+          client,
+        }]
+      })
+    }
+
     addToast('Entry added', 'success')
     setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })
   }
@@ -197,6 +257,68 @@ export default function App() {
       if (a.id !== activityId) return a
       return { ...a, client_links: [] }
     }))
+  }
+
+  function handleSetActivityMatter(activityId, matterId) {
+    setActivities(prev => prev.map(a =>
+      a.id === activityId ? { ...a, matter_id: matterId } : a
+    ))
+  }
+
+  function handleAddMatterToClient(clientId, matterName, matterNumber) {
+    const matter = {
+      id: `m-${Date.now()}`,
+      name: matterName.trim(),
+      number: (matterNumber || '').trim(),
+      status: 'active',
+    }
+    setClients(prev => prev.map(c => {
+      if (c.id !== clientId) return c
+      return { ...c, matters: [...(c.matters || []), matter] }
+    }))
+    return matter
+  }
+
+  function handleToggleActivityBillable(activityId) {
+    setActivities(prev => prev.map(a =>
+      a.id === activityId ? { ...a, billable: a.billable === false ? true : false } : a
+    ))
+  }
+
+  function handleSplitActivity(activityId, segments) {
+    setActivities(prev => {
+      const act = prev.find(a => a.id === activityId)
+      if (!act || !segments || segments.length < 2) return prev
+
+      const start = new Date(act.start_time)
+      let cursor = start.getTime()
+
+      const newActivities = segments.map((seg, i) => {
+        const segStart = new Date(cursor)
+        const segEnd = new Date(cursor + seg.minutes * 60 * 1000)
+        cursor = segEnd.getTime()
+
+        const segClient = seg.clientId ? clients.find(c => c.id === Number(seg.clientId)) : null
+        const segId = i === 0 ? act.id : Date.now() + i
+
+        return {
+          ...act,
+          id: segId,
+          window_title: seg.description || act.window_title,
+          start_time: segStart.toISOString(),
+          end_time: segEnd.toISOString(),
+          duration_seconds: seg.minutes * 60,
+          client_links: seg.clientId
+            ? [{ id: segId, activity_id: segId, client_id: Number(seg.clientId), confidence: 1, matched_by: 'manual', client: segClient }]
+            : [],
+        }
+      })
+
+      return prev.filter(a => a.id !== activityId).concat(newActivities)
+    })
+    setDetailEntry(null)
+    setSplitActivity(null)
+    addToast('Activity split', 'success')
   }
 
   function handleCreateEntry(hints = {}) {
@@ -252,12 +374,13 @@ export default function App() {
         onNewEntry={() => handleCreateEntry()}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-      />
-
-      <Projects
-        onManageClients={() => setShowManageClients(true)}
-        onExport={handleExport}
         onReport={() => setShowReport(true)}
+        onExport={handleExport}
+        onManageClients={() => setShowManageClients(true)}
+        onSettings={() => setShowSettings(true)}
+        timer={timer}
+        onStartTimer={handleStartTimer}
+        onStopTimer={handleStopTimer}
       />
 
       <div className="app-content">
@@ -265,9 +388,9 @@ export default function App() {
         <ActivityColumn
           title="Computer"
           subtitle="Apps & documents"
-          icon={'\u{1F4BB}'}
+          icon={<Monitor size={15} />}
           filterTypes={['app', 'document', 'browser']}
-          emptyIcon={'\u{1F4BB}'}
+          emptyIcon={<Monitor size={15} />}
           emptyMessage="No computer activity captured yet"
           activities={filteredActivities}
           zoom={zoom}
@@ -275,6 +398,10 @@ export default function App() {
           onCreateEntry={handleCreateEntry}
           onAssign={handleAssignActivity}
           onUpdateTime={handleUpdateActivityTime}
+          onSplit={(act) => setSplitActivity(act)}
+          onToggleBillable={handleToggleActivityBillable}
+          onSetMatter={handleSetActivityMatter}
+          onAddMatter={handleAddMatterToClient}
           startHour={startHour}
           endHour={endHour}
         />
@@ -282,9 +409,9 @@ export default function App() {
         <ActivityColumn
           title="Calendar"
           subtitle="Meetings & events"
-          icon={'\u{1F4C5}'}
+          icon={<CalendarDays size={15} />}
           filterTypes={['calendar']}
-          emptyIcon={'\u{1F4C5}'}
+          emptyIcon={<CalendarDays size={15} />}
           emptyMessage="No calendar events synced"
           activities={filteredActivities}
           zoom={zoom}
@@ -292,6 +419,10 @@ export default function App() {
           onCreateEntry={handleCreateEntry}
           onAssign={handleAssignActivity}
           onUpdateTime={handleUpdateActivityTime}
+          onSplit={(act) => setSplitActivity(act)}
+          onToggleBillable={handleToggleActivityBillable}
+          onSetMatter={handleSetActivityMatter}
+          onAddMatter={handleAddMatterToClient}
           startHour={startHour}
           endHour={endHour}
         />
@@ -299,9 +430,9 @@ export default function App() {
         <ActivityColumn
           title="Calls"
           subtitle="Phone & video calls"
-          icon={'\u{1F4DE}'}
+          icon={<Phone size={15} />}
           filterTypes={['call']}
-          emptyIcon={'\u{1F4DE}'}
+          emptyIcon={<Phone size={15} />}
           emptyMessage="No calls synced yet"
           activities={filteredActivities}
           zoom={zoom}
@@ -309,6 +440,10 @@ export default function App() {
           onCreateEntry={handleCreateEntry}
           onAssign={handleAssignActivity}
           onUpdateTime={handleUpdateActivityTime}
+          onSplit={(act) => setSplitActivity(act)}
+          onToggleBillable={handleToggleActivityBillable}
+          onSetMatter={handleSetActivityMatter}
+          onAddMatter={handleAddMatterToClient}
           startHour={startHour}
           endHour={endHour}
         />
@@ -316,9 +451,9 @@ export default function App() {
         <ActivityColumn
           title="Emails"
           subtitle="Sent & received"
-          icon={'\u{1F4E7}'}
+          icon={<Mail size={15} />}
           filterTypes={['email']}
-          emptyIcon={'\u{1F4E7}'}
+          emptyIcon={<Mail size={15} />}
           emptyMessage="No emails synced yet"
           activities={filteredActivities}
           zoom={zoom}
@@ -326,6 +461,10 @@ export default function App() {
           onCreateEntry={handleCreateEntry}
           onAssign={handleAssignActivity}
           onUpdateTime={handleUpdateActivityTime}
+          onSplit={(act) => setSplitActivity(act)}
+          onToggleBillable={handleToggleActivityBillable}
+          onSetMatter={handleSetActivityMatter}
+          onAddMatter={handleAddMatterToClient}
           startHour={startHour}
           endHour={endHour}
         />
@@ -356,6 +495,7 @@ export default function App() {
           onSave={handleSaveEntry}
           onDelete={handleDeleteEntry}
           onClose={() => setEntryModal({ open: false, entry: null, defaultStartTime: '', defaultEndTime: '' })}
+          onAddMatter={handleAddMatterToClient}
           defaultStartTime={entryModal.defaultStartTime}
           defaultEndTime={entryModal.defaultEndTime}
         />
@@ -365,11 +505,16 @@ export default function App() {
         <TimeEntryDetail
           entry={detailEntry}
           activities={activities}
+          clients={clients}
           onClose={() => setDetailEntry(null)}
           onUnassign={(activityId) => {
             handleUnassignActivity(activityId)
             addToast('Activity unassigned', 'success')
           }}
+          onToggleBillable={handleToggleActivityBillable}
+          onSetMatter={handleSetActivityMatter}
+          onAddMatter={handleAddMatterToClient}
+          onSplit={(act) => { setDetailEntry(null); setSplitActivity(act) }}
         />
       )}
 
@@ -396,6 +541,24 @@ export default function App() {
         <ReportView
           onClose={() => setShowReport(false)}
           clients={clients}
+          roundingInterval={roundingInterval}
+        />
+      )}
+
+      {splitActivity && (
+        <SplitModal
+          activity={splitActivity}
+          clients={clients}
+          onSplit={handleSplitActivity}
+          onClose={() => setSplitActivity(null)}
+        />
+      )}
+
+      {showSettings && (
+        <Settings
+          roundingInterval={roundingInterval}
+          onRoundingChange={setRoundingInterval}
+          onClose={() => setShowSettings(false)}
         />
       )}
 

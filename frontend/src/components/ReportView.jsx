@@ -11,6 +11,12 @@ function formatDuration(totalSeconds) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+function roundUpSeconds(totalSeconds, intervalMinutes) {
+  if (!intervalMinutes || !totalSeconds) return totalSeconds
+  const intervalSec = intervalMinutes * 60
+  return Math.ceil(totalSeconds / intervalSec) * intervalSec
+}
+
 function formatDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -79,7 +85,7 @@ const TYPE_LABELS = {
   email: 'Email',
 }
 
-export default function ReportView({ onClose, clients }) {
+export default function ReportView({ onClose, clients, roundingInterval }) {
   const defaultRange = getPresetRange('this-week')
   const [startDate, setStartDate] = useState(formatDateStr(defaultRange.start))
   const [endDate, setEndDate] = useState(formatDateStr(defaultRange.end))
@@ -112,17 +118,19 @@ export default function ReportView({ onClose, clients }) {
         const dow = current.getDay()
         if (dow !== 0 && dow !== 6) {
           const dateStr = formatDateStr(current)
-          const res = await api.getActivities(dateStr)
-          const activities = res.data?.activities || []
+          const actRes = await api.getActivities(dateStr)
+          const activities = actRes.data?.activities || []
 
           for (const act of activities) {
             if (act.client_links && act.client_links.length > 0) {
               const clientId = act.client_links[0].client_id
               const dur = act.duration_seconds || 0
+              const isBillable = act.billable !== false
               if (!clientTotals[clientId]) {
-                clientTotals[clientId] = { seconds: 0, count: 0 }
+                clientTotals[clientId] = { seconds: 0, billableSeconds: 0, count: 0 }
               }
               clientTotals[clientId].seconds += dur
+              if (isBillable) clientTotals[clientId].billableSeconds += dur
               clientTotals[clientId].count += 1
               totalSeconds += dur
               totalActivities += 1
@@ -180,23 +188,23 @@ export default function ReportView({ onClose, clients }) {
       .map(([clientId, totals]) => ({
         clientId: Number(clientId),
         client: clientMap[Number(clientId)],
-        ...totals,
+        seconds: roundUpSeconds(totals.seconds, roundingInterval),
+        billableSeconds: roundUpSeconds(totals.billableSeconds, roundingInterval),
+        hasNb: totals.billableSeconds < totals.seconds,
+        count: totals.count,
       }))
-  }, [data, clientMap])
+  }, [data, clientMap, roundingInterval])
 
   const billableTotalSeconds = useMemo(() => {
     if (!sortedClients.length) return 0
-    return sortedClients
-      .filter(row => row.client?.billable !== false)
-      .reduce((sum, row) => sum + row.seconds, 0)
+    return sortedClients.reduce((sum, row) => sum + row.billableSeconds, 0)
   }, [sortedClients])
 
-  const billableTotalActivities = useMemo(() => {
-    if (!sortedClients.length) return 0
-    return sortedClients
-      .filter(row => row.client?.billable !== false)
-      .reduce((sum, row) => sum + row.count, 0)
+  const grandTotalSeconds = useMemo(() => {
+    return sortedClients.reduce((sum, row) => sum + row.seconds, 0)
   }, [sortedClients])
+
+  const hasAnyNb = sortedClients.some(r => r.hasNb)
 
   const presets = [
     { id: 'this-week', label: 'This Week' },
@@ -264,7 +272,7 @@ export default function ReportView({ onClose, clients }) {
               </thead>
               <tbody>
                 {sortedClients.map(row => {
-                  const isNonBillable = row.client?.billable === false
+                  const isNonBillable = row.hasNb
                   const isExpanded = expandedClient === row.clientId
                   const activities = data.clientActivities?.[row.clientId] || []
 
@@ -284,7 +292,7 @@ export default function ReportView({ onClose, clients }) {
                           />
                           {row.client?.name || `Client #${row.clientId}`}
                           {isNonBillable && (
-                            <span className="report-nonbillable-badge">Non-billable</span>
+                            <span className="report-nonbillable-badge">Non billable</span>
                           )}
                         </td>
                         <td className="report-td report-td-hours">{formatDuration(row.seconds)}</td>
@@ -315,21 +323,19 @@ export default function ReportView({ onClose, clients }) {
                 })}
               </tbody>
               <tfoot>
-                {sortedClients.some(r => r.client?.billable === false) && (
+                {hasAnyNb && (
                   <tr className="report-billable-row">
                     <td className="report-td report-td-client report-total-label">Billable Total</td>
                     <td className="report-td report-td-hours report-total-value">
                       {formatDuration(billableTotalSeconds)}
                     </td>
-                    <td className="report-td report-td-count report-total-value">
-                      {billableTotalActivities}
-                    </td>
+                    <td className="report-td report-td-count report-total-value"></td>
                   </tr>
                 )}
                 <tr className="report-total-row">
                   <td className="report-td report-td-client report-total-label">Total</td>
                   <td className="report-td report-td-hours report-total-value">
-                    {formatDuration(data.totalSeconds)}
+                    {formatDuration(grandTotalSeconds)}
                   </td>
                   <td className="report-td report-td-count report-total-value">
                     {data.totalActivities}

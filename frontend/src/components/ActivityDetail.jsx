@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { clientColor } from '../clientColor'
+import MatterPicker from './MatterPicker'
 
 const ICONS = {
   document: '\u{1F4C4}', email: '\u{1F4E7}', call: '\u{1F4DE}',
@@ -29,7 +30,7 @@ function calcDuration(start, end) {
   return Math.max(0, (eh * 60 + em) - (sh * 60 + sm))
 }
 
-export default function ActivityDetail({ activity, position, clients, onClose, onAssign, onUpdateTime }) {
+export default function ActivityDetail({ activity, position, clients, onClose, onAssign, onUpdateTime, onSplit, onToggleBillable, onSetMatter, onAddMatter }) {
   const ref = useRef(null)
   const [changing, setChanging] = useState(false)
   const [search, setSearch] = useState('')
@@ -62,10 +63,9 @@ export default function ActivityDetail({ activity, position, clients, onClose, o
   const cid = activity.client_links?.[0]?.client_id
   const matched = cid && clients ? clients.find(c => c.id === cid) : null
   const filtered = clients ? clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase())) : []
-
   function handlePick(clientId) {
     if (onAssign) onAssign(activity.id, clientId)
-    onClose()
+    setChanging(false)
   }
 
   function handleTimeChange(newStart, newEnd) {
@@ -135,6 +135,35 @@ export default function ActivityDetail({ activity, position, clients, onClose, o
                   {filtered.length === 0 && <div className="activity-popup-no-results">No clients found</div>}
                 </div>
               </>
+            )}
+          </div>
+
+          {matched && (
+            <div className="activity-popup-matter">
+              <MatterPicker
+                matters={matched.matters}
+                value={activity.matter_id}
+                onChange={matterId => onSetMatter(activity.id, matterId)}
+                onCreateMatter={(name, number) => onAddMatter(cid, name, number)}
+                clientName={matched.name}
+                placeholder="Search or create matter..."
+              />
+            </div>
+          )}
+
+          <div className="activity-popup-actions">
+            <label className="activity-popup-billable-toggle">
+              <input
+                type="checkbox"
+                checked={activity.billable === false}
+                onChange={() => onToggleBillable(activity.id)}
+              />
+              <span>Non billable</span>
+            </label>
+            {dur > 1 && (
+              <button className="activity-popup-split-btn" onClick={() => { onClose(); onSplit(activity) }}>
+                Split
+              </button>
             )}
           </div>
         </div>
